@@ -1,0 +1,157 @@
+{
+  "data": {
+    "__schema": {
+      "queryType": {
+        "name": "Query",
+        "fields": [
+          {
+            "name": "player",
+            "type": {
+              "kind": "OBJECT",
+              "name": "Player",
+              "ofType": null
+            }
+          },
+          {
+            "name": "players",
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null
+                }
+              }
+            }
+          },
+          {
+            "name": "plot",
+            "type": {
+              "kind": "OBJECT",
+              "name": "Plot",
+              "ofType": null
+            }
+          },
+          {
+            "name": "plots",
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null
+                }
+              }
+            }
+          },
+          {
+            "name": "weaponDefinition",
+            "type": {
+              "kind": "OBJECT",
+              "name": "WeaponDefinition",
+              "ofType": null
+            }
+          },
+          {
+            "name": "weaponDefinitions",
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null
+                }
+              }
+            }
+          },
+          {
+            "name": "weaponInstance",
+            "type": {
+              "kind": "OBJECT",
+              "name": "WeaponInstance",
+              "ofType": null
+            }
+          },
+          {
+            "name": "weaponInstances",
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null
+                }
+              }
+            }
+          },
+          {
+            "name": "recipeDefinition",
+            "type": {
+              "kind": "OBJECT",
+              "name": "RecipeDefinition",
+              "ofType": null
+            }
+          },
+          {
+            "name": "recipeDefinitions",
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null
+                }
+              }
+            }
+          },
+          {
+            "name": "craftEvent",
+            "type": {
+              "kind": "OBJECT",
+              "name": "CraftEvent",
+              "ofType": null
+            }
+          },
+          {
+            "name": "craftEvents",
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "LIST",
+                "name": null,
+                "ofType": {
+                  "kind": "NON_NULL",
+                  "name": null
+                }
+              }
+            }
+          },
+          {
+            "name": "_meta",
+            "type": {
+              "kind": "OBJECT",
+              "name": "_Meta_",
+              "ofType": null
+            }
+          }
+        ]
+      }
+    }
+  }
+}
