@@ -1,5 +1,7 @@
 export const CONFIG = {
-  subgraphUrl: import.meta.env.VITE_SUBGRAPH_URL || "",
+  subgraphUrl:
+    import.meta.env.VITE_SUBGRAPH_URL ||
+    "https://api.city.inpinity.online/graphql",
   chainId: Number(import.meta.env.VITE_CHAIN_ID || "8453"),
   cityRegistryAddress: import.meta.env.VITE_CITY_REGISTRY_ADDRESS || "",
   cityLandAddress: import.meta.env.VITE_CITY_LAND_ADDRESS || "",
