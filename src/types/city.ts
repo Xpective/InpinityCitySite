@@ -1,8 +1,8 @@
 export type MetaBlock = {
-  number: number;
+  number: string;
 };
 
-export type Meta = {
+export type MetaData = {
   block: MetaBlock;
 };
 
@@ -10,43 +10,88 @@ export type WeaponDefinition = {
   id: string;
   weaponDefinitionId: string;
   name: string;
-  category: string;
+  classId: string;
+  damageTypeId: string;
+  techTier: string;
+  requiredLevel: string;
+  minDamage: string;
+  maxDamage: string;
+  attackSpeed: string;
+  maxDurability: string;
+  enchantmentSlots: string;
+  materiaSlots: string;
+  enabled: boolean;
+};
+
+export type WeaponInstanceOwner = {
+  id: string;
+};
+
+export type WeaponInstanceDefinition = {
+  id: string;
+  name: string;
+};
+
+export type WeaponInstance = {
+  id: string;
+  tokenId: string;
   rarityTier: string;
+  frameTier: string;
+  durability: string;
+  upgradeLevel: string;
+  originPlotId: string;
+  originFaction: string;
+  originDistrictKind: string;
+  craftedAt: string;
+  resonanceType: string;
+  usedAether: boolean;
+  owner: WeaponInstanceOwner | null;
+  weaponDefinition: WeaponInstanceDefinition | null;
 };
 
 export type MateriaDefinition = {
   id: string;
   materiaId: string;
   name: string;
-  elementLabel: string;
+  categoryRaw: string;
   categoryLabel: string;
+  elementRaw: string;
+  elementLabel: string;
   rarityTier: string;
   maxLevel: string;
   enabled: boolean;
 };
 
-export type EnchantmentItemDefinition = {
+export type PlotOwner = {
   id: string;
-  itemId: string;
-  enchantmentDefinitionId: string;
-  level: string;
-  rarityTier: string;
-  enabled: boolean;
 };
 
-export type MateriaItemDefinition = {
+export type Plot = {
   id: string;
-  itemId: string;
-  materiaDefinitionId: string;
-  level: string;
-  rarityTier: string;
-  enabled: boolean;
+  plotId: string;
+  plotType: string;
+  faction: string;
+  status: string;
+  width: string;
+  height: string;
+  createdAt: string;
+  exists: boolean;
+  owner: PlotOwner | null;
+};
+
+export type Player = {
+  id: string;
+  cityKeyTokenId: string | null;
+  faction: string;
+  personalPlotCount: string;
+  craftedWeapons: string;
 };
 
 export type DashboardQueryResult = {
-  _meta: Meta;
+  _meta: MetaData;
   weaponDefinitions: WeaponDefinition[];
+  weaponInstances: WeaponInstance[];
   materiaDefinitions: MateriaDefinition[];
-  enchantmentItemDefinitions: EnchantmentItemDefinition[];
-  materiaItemDefinitions: MateriaItemDefinition[];
+  plots: Plot[];
+  players: Player[];
 };

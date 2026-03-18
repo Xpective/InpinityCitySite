@@ -6,41 +6,79 @@ export const DASHBOARD_QUERY = `
       }
     }
 
-    weaponDefinitions(first: 5, orderBy: weaponDefinitionId, orderDirection: asc) {
+    weaponDefinitions(first: 12, orderBy: weaponDefinitionId, orderDirection: asc) {
       id
       weaponDefinitionId
       name
-      category
-      rarityTier
+      classId
+      damageTypeId
+      techTier
+      requiredLevel
+      minDamage
+      maxDamage
+      attackSpeed
+      maxDurability
+      enchantmentSlots
+      materiaSlots
+      enabled
     }
 
-    materiaDefinitions(first: 5, orderBy: materiaId, orderDirection: asc) {
+    weaponInstances(first: 12, orderBy: tokenId, orderDirection: asc) {
+      id
+      tokenId
+      rarityTier
+      frameTier
+      durability
+      upgradeLevel
+      originPlotId
+      originFaction
+      originDistrictKind
+      craftedAt
+      resonanceType
+      usedAether
+      owner {
+        id
+      }
+      weaponDefinition {
+        id
+        name
+      }
+    }
+
+    materiaDefinitions(first: 12, orderBy: materiaId, orderDirection: asc) {
       id
       materiaId
       name
-      elementLabel
+      categoryRaw
       categoryLabel
+      elementRaw
+      elementLabel
       rarityTier
       maxLevel
       enabled
     }
 
-    enchantmentItemDefinitions(first: 5, orderBy: itemId, orderDirection: asc) {
+    plots(first: 12, orderBy: plotId, orderDirection: asc) {
       id
-      itemId
-      enchantmentDefinitionId
-      level
-      rarityTier
-      enabled
+      plotId
+      plotType
+      faction
+      status
+      width
+      height
+      createdAt
+      exists
+      owner {
+        id
+      }
     }
 
-    materiaItemDefinitions(first: 5, orderBy: itemId, orderDirection: asc) {
+    players(first: 12, orderBy: id, orderDirection: asc) {
       id
-      itemId
-      materiaDefinitionId
-      level
-      rarityTier
-      enabled
+      cityKeyTokenId
+      faction
+      personalPlotCount
+      craftedWeapons
     }
   }
 `;

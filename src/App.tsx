@@ -5,6 +5,12 @@ import { requestGraphQL } from "./lib/graphql";
 import { DASHBOARD_QUERY } from "./lib/queries";
 import type { DashboardQueryResult } from "./types/city";
 
+function shortAddress(value: string | null | undefined): string {
+  if (!value) return "—";
+  if (value.length < 12) return value;
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
 export default function App() {
   const [data, setData] = useState<DashboardQueryResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,10 +24,9 @@ export default function App() {
         const result = await requestGraphQL<DashboardQueryResult>(DASHBOARD_QUERY);
         setData(result);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Unbekannter Fehler";
-        setError(message);
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
-        setLoading(false); 
+        setLoading(false);
       }
     }
 
@@ -42,93 +47,118 @@ export default function App() {
       <section className="panel">
         <h2>Projekt-Konfiguration</h2>
         <div className="list">
-          <div className="listItem"><strong>Chain ID:</strong> {CONFIG.chainId}</div>
-          <div className="listItem"><strong>Subgraph Proxy:</strong> {CONFIG.subgraphUrl || "nicht gesetzt"}</div>
-          <div className="listItem"><strong>CityRegistry:</strong> {CONFIG.cityRegistryAddress || "folgt"}</div>
-          <div className="listItem"><strong>CityLand:</strong> {CONFIG.cityLandAddress || "folgt"}</div>
-          <div className="listItem"><strong>CityConfig:</strong> {CONFIG.cityConfigAddress || "folgt"}</div>
-          <div className="listItem"><strong>CityStatus:</strong> {CONFIG.cityStatusAddress || "folgt"}</div>
+          <div className="listItem">Chain ID: {CONFIG.chainId}</div>
+          <div className="listItem">Subgraph Proxy: {CONFIG.subgraphUrl || "nicht gesetzt"}</div>
+          <div className="listItem">CityRegistry: {CONFIG.cityRegistryAddress || "folgt"}</div>
+          <div className="listItem">CityLand: {CONFIG.cityLandAddress || "folgt"}</div>
+          <div className="listItem">CityConfig: {CONFIG.cityConfigAddress || "folgt"}</div>
+          <div className="listItem">CityStatus: {CONFIG.cityStatusAddress || "folgt"}</div>
         </div>
       </section>
 
       <section className="panel">
         <h2>City Dashboard</h2>
 
-        {loading && <p>Lade Daten…</p>}
+        {loading && <p>Lade Daten...</p>}
 
         {error && (
           <pre className="errorBox">{error}</pre>
         )}
 
-        {data && (
+        {!loading && !error && data && (
           <>
-            <div className="statsGrid">
-              <div className="statCard">
-                <div className="statLabel">Indexed Block</div>
-                <div className="statValue">{data._meta?.block?.number ?? "-"}</div>
+            <div className="cards">
+              <div className="card">
+                <div className="cardLabel">Indexer Block</div>
+                <div className="cardValue">{data._meta?.block?.number || "—"}</div>
               </div>
-              <div className="statCard">
-                <div className="statLabel">Weapon Definitions</div>
-                <div className="statValue">{data.weaponDefinitions.length}</div>
+              <div className="card">
+                <div className="cardLabel">Weapon Definitions</div>
+                <div className="cardValue">{data.weaponDefinitions.length}</div>
               </div>
-              <div className="statCard">
-                <div className="statLabel">Materia Definitions</div>
-                <div className="statValue">{data.materiaDefinitions.length}</div>
+              <div className="card">
+                <div className="cardLabel">Weapon Instances</div>
+                <div className="cardValue">{data.weaponInstances.length}</div>
               </div>
-              <div className="statCard">
-                <div className="statLabel">Materia Item Definitions</div>
-                <div className="statValue">{data.materiaItemDefinitions.length}</div>
+              <div className="card">
+                <div className="cardLabel">Materia Definitions</div>
+                <div className="cardValue">{data.materiaDefinitions.length}</div>
+              </div>
+              <div className="card">
+                <div className="cardLabel">Plots</div>
+                <div className="cardValue">{data.plots.length}</div>
+              </div>
+              <div className="card">
+                <div className="cardLabel">Players</div>
+                <div className="cardValue">{data.players.length}</div>
               </div>
             </div>
 
-            <div className="cards">
-              <section className="panel inset">
-                <h3>Weapons</h3>
-                <div className="list">
-                  {data.weaponDefinitions.map((item) => (
-                    <div className="listItem" key={item.id}>
-                      <strong>{item.name}</strong><br />
-                      ID: {item.weaponDefinitionId} · Category: {item.category} · Rarity: {item.rarityTier}
-                    </div>
-                  ))}
-                </div>
-              </section>
+            <div className="gridSection">
+              <h3>Weapon Definitions</h3>
+              <div className="list">
+                {data.weaponDefinitions.map((weapon) => (
+                  <div className="listItem" key={weapon.id}>
+                    <strong>{weapon.name}</strong> · ID {weapon.weaponDefinitionId} · Tech{" "}
+                    {weapon.techTier} · Damage {weapon.minDamage}-{weapon.maxDamage} ·
+                    Slots E/M {weapon.enchantmentSlots}/{weapon.materiaSlots} ·{" "}
+                    {weapon.enabled ? "aktiv" : "inaktiv"}
+                  </div>
+                ))}
+              </div>
+            </div>
 
-              <section className="panel inset">
-                <h3>Materia</h3>
-                <div className="list">
-                  {data.materiaDefinitions.map((item) => (
-                    <div className="listItem" key={item.id}>
-                      <strong>{item.name}</strong><br />
-                      ID: {item.materiaId} · Element: {item.elementLabel} · Category: {item.categoryLabel} · MaxLevel: {item.maxLevel}
-                    </div>
-                  ))}
-                </div>
-              </section>
+            <div className="gridSection">
+              <h3>Weapon Instances</h3>
+              <div className="list">
+                {data.weaponInstances.map((item) => (
+                  <div className="listItem" key={item.id}>
+                    <strong>Token #{item.tokenId}</strong> · {item.weaponDefinition?.name || "—"} ·
+                    Rarity {item.rarityTier} · Upgrade {item.upgradeLevel} · Durability{" "}
+                    {item.durability} · Plot {item.originPlotId || "—"} · Owner{" "}
+                    {shortAddress(item.owner?.id)}
+                  </div>
+                ))}
+              </div>
+            </div>
 
-              <section className="panel inset">
-                <h3>Enchantment Items</h3>
-                <div className="list">
-                  {data.enchantmentItemDefinitions.map((item) => (
-                    <div className="listItem" key={item.id}>
-                      <strong>Item #{item.itemId}</strong><br />
-                      EnchantmentDef: {item.enchantmentDefinitionId} · Level: {item.level} · Rarity: {item.rarityTier}
-                    </div>
-                  ))}
-                </div>
-              </section>
+            <div className="gridSection">
+              <h3>Materia Definitions</h3>
+              <div className="list">
+                {data.materiaDefinitions.map((materia) => (
+                  <div className="listItem" key={materia.id}>
+                    <strong>{materia.name}</strong> · ID {materia.materiaId} · Element{" "}
+                    {materia.elementLabel} · Kategorie {materia.categoryLabel} · Max Level{" "}
+                    {materia.maxLevel} · {materia.enabled ? "aktiv" : "inaktiv"}
+                  </div>
+                ))}
+              </div>
+            </div>
 
-              <section className="panel inset">
-                <h3>Materia Items</h3>
-                <div className="list">
-                  {data.materiaItemDefinitions.map((item) => (
-                    <div className="listItem" key={item.id}>
-                      <strong>Item #{item.itemId}</strong><br />
-                      MateriaDef: {item.materiaDefinitionId} · Level: {item.level} · Rarity: {item.rarityTier}
-                    </div>
-                  ))}
-                </div>
-              </section>
+            <div className="gridSection">
+              <h3>Plots</h3>
+              <div className="list">
+                {data.plots.map((plot) => (
+                  <div className="listItem" key={plot.id}>
+                    <strong>Plot #{plot.plotId}</strong> · Typ {plot.plotType} · Fraktion{" "}
+                    {plot.faction} · Status {plot.status} · Größe {plot.width}x{plot.height} ·
+                    Owner {shortAddress(plot.owner?.id)}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="gridSection">
+              <h3>Players</h3>
+              <div className="list">
+                {data.players.map((player) => (
+                  <div className="listItem" key={player.id}>
+                    <strong>{shortAddress(player.id)}</strong> · Faction {player.faction} ·
+                    City Key {player.cityKeyTokenId || "—"} · Personal Plots{" "}
+                    {player.personalPlotCount} · Crafted Weapons {player.craftedWeapons}
+                  </div>
+                ))}
+              </div>
             </div>
           </>
         )}
@@ -151,10 +181,10 @@ export default function App() {
       <section className="panel">
         <h2>Nächste Ausbaustufe</h2>
         <div className="list">
-          <div className="listItem">1. Plot-Queries exakt aus Introspection ableiten</div>
+          <div className="listItem">1. Plot-Auswahl mit echten freien Plots bauen</div>
           <div className="listItem">2. Wallet Connect einbauen</div>
-          <div className="listItem">3. Qubiq-Reserve-UI bauen</div>
-          <div className="listItem">4. Cloudflare Deploy + Domain Routing</div>
+          <div className="listItem">3. Reserve-/Kauf-Flow an Contracts hängen</div>
+          <div className="listItem">4. Material- und Preislogik für Qubiq anzeigen</div>
         </div>
       </section>
     </div>
