@@ -21,7 +21,7 @@ export default function App() {
         const message = err instanceof Error ? err.message : "Unbekannter Fehler";
         setError(message);
       } finally {
-        setLoading(false);
+        setLoading(false); 
       }
     }
 
