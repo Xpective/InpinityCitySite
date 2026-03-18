@@ -1,8 +1,13 @@
-export async function fetchGraphQL<T>(
-  endpoint: string,
+export async function requestGraphQL<T>(
   query: string,
   variables?: Record<string, unknown>
 ): Promise<T> {
+  const endpoint = import.meta.env.VITE_SUBGRAPH_URL;
+
+  if (!endpoint) {
+    throw new Error("VITE_SUBGRAPH_URL is not set");
+  }
+
   const res = await fetch(endpoint, {
     method: "POST",
     headers: {
