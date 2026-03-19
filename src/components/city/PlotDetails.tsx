@@ -1,5 +1,5 @@
 import type { InfinityPlot } from "../../types/infinity";
-import { getLaneWeight } from "../../lib/infinity-layout";
+import { getLaneWeight, getPlotKindLabel } from "../../lib/infinity-layout";
 
 type PlotDetailsProps = {
   plot: InfinityPlot | null;
@@ -22,7 +22,7 @@ export default function PlotDetails({ plot }: PlotDetailsProps) {
       >
         <h3 style={{ marginTop: 0 }}>Plot Details</h3>
         <p style={{ marginBottom: 0, opacity: 0.8 }}>
-          Wähle einen Plot in der ∞-Map aus.
+          Wähle links einen Plot in der ∞-City aus.
         </p>
       </div>
     );
@@ -45,12 +45,15 @@ export default function PlotDetails({ plot }: PlotDetailsProps) {
 
       <div style={{ display: "grid", gap: 8 }}>
         <div>Status: {pretty(plot.status)}</div>
+        <div>Typ: {getPlotKindLabel(plot.kind)}</div>
         <div>Faction: {pretty(plot.faction)}</div>
         <div>Side: {pretty(plot.side)}</div>
         <div>Lane: {plot.lane}</div>
         <div>Nexus Weight: {laneWeight}</div>
         <div>Distance to Nexus: {plot.distanceToNexus}</div>
+        <div>Grid Size: {plot.widthUnits}×{plot.heightUnits}</div>
         <div>Position: {plot.x.toFixed(1)} / {plot.y.toFixed(1)}</div>
+        {plot.ownerLabel ? <div>Owner: {plot.ownerLabel}</div> : null}
       </div>
     </div>
   );

@@ -14,7 +14,10 @@ export type InfinityPlotStatus =
   | "reserved"
   | "owned"
   | "nexus"
-  | "locked";
+  | "locked"
+  | "community";
+
+export type InfinityPlotKind = "personal" | "community";
 
 export type InfinityPlot = {
   id: string;
@@ -28,5 +31,9 @@ export type InfinityPlot = {
   rarity: InfinityRarity;
   faction: InfinityFaction;
   status: InfinityPlotStatus;
+  kind: InfinityPlotKind;
+  widthUnits: number;
+  heightUnits: number;
   label: string;
+  ownerLabel?: string;
 };
