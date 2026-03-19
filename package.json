@@ -6,26 +6,59 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:force": "npm run generate:types && npm run codegen:force && tsc -b --skipLibCheck && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "validate": "tsx scripts/validate-types.ts",
+    "generate:types": "tsx scripts/generate-queries.ts",
+    "check:all": "npm run validate && npm run generate:types && npm run build",
+    "codegen": "graphql-codegen --config codegen.ts",
+    "codegen:force": "graphql-codegen --config codegen.ts --allow-partial-results",
+    "codegen:watch": "graphql-codegen --config codegen.ts --watch",
+    "prebuild": "npm run codegen",
+    "postinstall": "npm run codegen",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "storybook:deploy": "storybook build && npx gh-pages -d storybook-static"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^7.3.9",
+    "@types/react-window": "^1.8.8",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "react-window": "^2.2.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@graphql-codegen/cli": "^6.2.1",
+    "@graphql-codegen/client-preset": "^5.2.4",
+    "@graphql-codegen/typescript": "^5.0.9",
+    "@graphql-codegen/typescript-operations": "^5.0.9",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/ui": "^4.1.0",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "jsdom": "^29.0.0",
+    "prettier": "^3.8.1",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^8.0.0"
+    "vite": "^8.0.0",
+    "vitest": "^4.1.0"
   }
 }
-

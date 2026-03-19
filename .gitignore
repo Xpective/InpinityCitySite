@@ -5,3 +5,6 @@ dist
 .dev.vars
 .dev.vars.*
 .DS_Store
+
+!.gitignore
+!schema.graphql

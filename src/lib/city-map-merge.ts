@@ -1,11 +1,83 @@
 import { DashboardQueryResult, Plot, PlotStatusInfo, PlotProvenance } from '../types/city';
 import type { InfinityPlot, InfinityFaction, InfinityPlotStatus, InfinityPlotKind } from '../types/infinity';
 
+// NEU: HydratedPlot Interface für bessere Typisierung
+export interface HydratedPlot extends InfinityPlot {
+  syncStatus: 'mock' | 'partial' | 'complete';
+  subgraphData?: {
+    plot: Plot;
+    statusInfo?: PlotStatusInfo;
+    provenance?: PlotProvenance;
+  };
+}
+
+/**
+ * Hydriert Basis-Plots mit Subgraph-Daten
+ * Markiert den Sync-Status für besseres Debugging
+ */
+export function hydratePlots(
+  basePlots: InfinityPlot[], 
+  subgraphData: Partial<DashboardQueryResult>
+): HydratedPlot[] {
+  if (!subgraphData || !subgraphData.plots) {
+    return basePlots.map(plot => ({
+      ...plot,
+      syncStatus: 'mock',
+    }));
+  }
+
+  const merged = mergeMapData(subgraphData);
+  const mergedMap = new Map(merged.map(p => [p.id, p]));
+  const plotsMap = new Map(subgraphData.plots?.map(p => [p.id, p]) || []);
+  const statusMap = new Map(subgraphData.plotStatusInfos?.map(s => [s.plot?.id, s]) || []);
+  const provenanceMap = new Map(subgraphData.plotProvenances?.map(p => [p.plot?.id, p]) || []);
+
+  return basePlots.map(plot => {
+    const mergedData = mergedMap.get(plot.id);
+    const subgraphPlot = plotsMap.get(plot.id);
+    
+    let syncStatus: HydratedPlot['syncStatus'] = 'mock';
+    
+    if (subgraphPlot) {
+      const hasStatus = statusMap.has(plot.id);
+      const hasProvenance = provenanceMap.has(plot.id);
+      
+      if (hasStatus && hasProvenance) {
+        syncStatus = 'complete';
+      } else if (hasStatus || hasProvenance) {
+        syncStatus = 'partial';
+      } else {
+        syncStatus = 'partial';
+      }
+    }
+
+    const hydrated: HydratedPlot = {
+      ...plot,
+      ...mergedData,
+      syncStatus,
+      isFavorite: plot.isFavorite,
+    };
+
+    if (subgraphPlot) {
+      hydrated.subgraphData = {
+        plot: subgraphPlot,
+        statusInfo: statusMap.get(plot.id),
+        provenance: provenanceMap.get(plot.id),
+      };
+    }
+
+    return hydrated;
+  });
+}
+
 /**
  * Kombiniert Subgraph-Daten (Plots, StatusInfos, Provenances) zu einem einheitlichen
  * InfinityPlot-Array für die Kartenanzeige.
+ * 
+ * @param data - Dashboard-Daten (können auch paginierte Teilmengen sein)
+ * @returns Partial<InfinityPlot>[] mit gemergten Daten
  */
-export function mergeMapData(data: DashboardQueryResult): Partial<InfinityPlot>[] {
+export function mergeMapData(data: Partial<DashboardQueryResult>): Partial<InfinityPlot>[] {
   if (!data) return [];
 
   const plots = data.plots || [];

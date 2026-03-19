@@ -1,13 +1,8 @@
-type GraphQLVariables = Record<string, unknown>;
+import { print } from 'graphql';
+import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 
-type GraphQLResponse<T> = {
-  data?: T;
-  errors?: Array<{
-    message: string;
-    locations?: Array<{ line: number; column: number }>;
-    path?: Array<string | number>;
-  }>;
-};
+type GraphQLVariables = Record<string, unknown>;
+type DocumentNode = string | TypedDocumentNode<any, any>;
 
 const DEFAULT_PROXY_URL = "https://api.city.inpinity.online/graphql";
 
@@ -18,10 +13,12 @@ function getGraphQLEndpoint(): string {
 }
 
 export async function requestGraphQL<T>(
-  query: string,
+  query: DocumentNode,
   variables?: GraphQLVariables
 ): Promise<T> {
   const endpoint = getGraphQLEndpoint();
+
+  const queryString = typeof query === 'string' ? query : print(query);
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -29,7 +26,7 @@ export async function requestGraphQL<T>(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      query,
+      query: queryString,
       variables: variables || {},
     }),
   });
@@ -40,9 +37,9 @@ export async function requestGraphQL<T>(
     throw new Error(`GraphQL request failed: ${res.status} ${text}`);
   }
 
-  let json: GraphQLResponse<T>;
+  let json: { data?: T; errors?: Array<{ message: string }> };
   try {
-    json = JSON.parse(text) as GraphQLResponse<T>;
+    json = JSON.parse(text);
   } catch {
     throw new Error(`GraphQL returned non-JSON response: ${text}`);
   }

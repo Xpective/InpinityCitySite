@@ -1,16 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import CityStats from "./components/city/CityStats";
 import CityToolbar from "./components/city/CityToolbar";
-import InfinityMap from "./components/city/InfinityMap";
 import PlotDetails from "./components/city/PlotDetails";
 import { getFavoritePlotIds, toggleFavoritePlot } from "./lib/favorites";
 import { requestGraphQL } from "./lib/graphql";
 import { CITY_DASHBOARD_QUERY } from "./lib/queries";
-import { mergeMapData } from "./lib/city-map-merge";
-import { generateInfinityPlots } from "./lib/infinity-layout";
+
+// NEUE IMPORTS
+import ErrorBoundary from "./components/common/ErrorBoundary";
+import ErrorMessage from "./components/common/ErrorMessage";
+import LoadingSpinner from "./components/common/LoadingSpinner";
+import PaginatedPlotList from "./components/city/PaginatedPlotList";
+import { parseError, retry, type AppError } from "./lib/errorHandling";
+
 import "./styles/global.css";
-import type { DashboardQueryResult } from "./types/city";
+
+// GENERIERTE TYPEN
+import type { CityDashboardQuery } from "./types/generated/graphql";
 import type { InfinityPlot } from "./types/infinity";
+import { generateInfinityPlots } from "./lib/infinity-layout";
 
 function downloadMapPng(): void {
   const svg = document.querySelector("#city-map-capture svg") as SVGElement | null;
@@ -37,9 +45,10 @@ export default function App() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selectedPlot, setSelectedPlot] = useState<InfinityPlot | null>(null);
 
-  const [dashboard, setDashboard] = useState<DashboardQueryResult | null>(null);
+  const [dashboard, setDashboard] = useState<CityDashboardQuery | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<AppError | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     setFavoriteIds(getFavoritePlotIds());
@@ -47,23 +56,37 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
+    let mounted = true;
 
     async function loadDashboard() {
       try {
         setLoading(true);
-        setError("");
+        setError(null);
 
-        const data = await requestGraphQL<DashboardQueryResult>(CITY_DASHBOARD_QUERY);
+        const data = await retry(
+          async () => {
+            return await requestGraphQL<CityDashboardQuery>(CITY_DASHBOARD_QUERY);
+          },
+          {
+            maxRetries: 3,
+            baseDelay: 1000,
+          }
+        );
 
-        if (!cancelled) {
+        if (!cancelled && mounted) {
           setDashboard(data);
         }
       } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled && mounted) {
+          const appError = parseError(err, { 
+            query: 'CITY_DASHBOARD_QUERY',
+            retryCount,
+          });
+          setError(appError);
+          console.error('Dashboard Fehler:', appError);
         }
       } finally {
-        if (!cancelled) {
+        if (!cancelled && mounted) {
           setLoading(false);
         }
       }
@@ -73,37 +96,14 @@ export default function App() {
 
     return () => {
       cancelled = true;
+      mounted = false;
     };
-  }, []);
+  }, [retryCount]);
 
-  const plots = useMemo(() => {
-    const basePlots = generateInfinityPlots().map((plot) => ({
-      ...plot,
-      isFavorite: favoriteIds.includes(plot.id),
-    }));
-
-    if (!dashboard) return basePlots;
-
-    const merged = mergeMapData(dashboard);
-    const mergedMap = new Map(merged.map(p => [p.id, p]));
-
-    return basePlots.map((plot) => {
-      const mergedData = mergedMap.get(plot.id);
-      if (mergedData) {
-        return {
-          ...plot,
-          ...mergedData,
-          isFavorite: plot.isFavorite,
-        };
-      }
-      return plot;
-    });
-  }, [dashboard, favoriteIds]);
-
-  const visiblePlots = useMemo(() => {
-    if (!onlyFavorites) return plots;
-    return plots.filter((plot) => favoriteIds.includes(plot.id));
-  }, [plots, onlyFavorites, favoriteIds]);
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    setError(null);
+  };
 
   const dashboardCounts = useMemo(() => {
     if (!dashboard) return null;
@@ -117,23 +117,15 @@ export default function App() {
     };
   }, [dashboard]);
 
+  const basePlots = useMemo(() => {
+    return generateInfinityPlots();
+  }, []);
+
   function handleJump(): void {
     const term = search.trim().toLowerCase();
     if (!term) return;
 
-    const found = plots.find((plot: InfinityPlot) => {
-      const plotId = plot.plotId || plot.id;
-      const owner = plot.owner || "";
-      return (
-        plotId.toLowerCase().includes(term) ||
-        plot.id.toLowerCase().includes(term) ||
-        owner.toLowerCase().includes(term)
-      );
-    });
-
-    if (found) {
-      setSelectedPlot(found);
-    }
+    alert('Die Suche wird in der paginierten Version bald verfügbar sein!');
   }
 
   function handleToggleFavorite(id: string): void {
@@ -141,27 +133,13 @@ export default function App() {
   }
 
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (!plots.length) return;
-
-      const currentIndex = selectedPlot
-        ? plots.findIndex((p) => p.id === selectedPlot.id)
-        : -1;
-
-      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-        const next = plots[(currentIndex + 1 + plots.length) % plots.length];
-        setSelectedPlot(next);
-      }
-
-      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-        const next = plots[(currentIndex - 1 + plots.length) % plots.length];
-        setSelectedPlot(next);
-      }
+    function onKeyDown(_e: KeyboardEvent) {
+      // Keyboard-Navigation vorerst deaktiviert
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [plots, selectedPlot]);
+  }, []);
 
   return (
     <div className="page">
@@ -204,50 +182,54 @@ export default function App() {
       <section className="panel">
         <h2>City Dashboard</h2>
 
-        {loading && <p>Loading city dashboard…</p>}
+        <ErrorBoundary
+          onError={(error) => console.error('Dashboard ErrorBoundary:', error)}
+          resetKeys={[dashboard]}
+        >
+          {loading && (
+            <>
+              <LoadingSpinner text="Lade Stadt-Daten..." />
+            </>
+          )}
 
-        {!loading && error && (
-          <pre
-            style={{
-              whiteSpace: "pre-wrap",
-              overflowX: "auto",
-              background: "rgba(10,14,26,0.65)",
-              padding: 16,
-              borderRadius: 14,
-            }}
-          >
-            {error}
-          </pre>
-        )}
+          {!loading && error && (
+            <ErrorMessage 
+              error={error} 
+              onRetry={handleRetry}
+              variant="card"
+              showDetails={import.meta.env.DEV}
+            />
+          )}
 
-        {!loading && !error && dashboardCounts && (
-          <div className="cards">
-            <div className="card">
-              <div className="muted">Indexer Block</div>
-              <strong>{dashboardCounts.indexerBlock}</strong>
+          {!loading && !error && dashboardCounts && (
+            <div className="cards">
+              <div className="card">
+                <div className="muted">Indexer Block</div>
+                <strong>{dashboardCounts.indexerBlock}</strong>
+              </div>
+              <div className="card">
+                <div className="muted">Weapon Definitions</div>
+                <strong>{dashboardCounts.weaponDefinitions}</strong>
+              </div>
+              <div className="card">
+                <div className="muted">Weapon Instances</div>
+                <strong>{dashboardCounts.weaponInstances}</strong>
+              </div>
+              <div className="card">
+                <div className="muted">Materia Definitions</div>
+                <strong>{dashboardCounts.materiaDefinitions}</strong>
+              </div>
+              <div className="card">
+                <div className="muted">Plots</div>
+                <strong>{dashboardCounts.plots}</strong>
+              </div>
+              <div className="card">
+                <div className="muted">Players</div>
+                <strong>{dashboardCounts.players}</strong>
+              </div>
             </div>
-            <div className="card">
-              <div className="muted">Weapon Definitions</div>
-              <strong>{dashboardCounts.weaponDefinitions}</strong>
-            </div>
-            <div className="card">
-              <div className="muted">Weapon Instances</div>
-              <strong>{dashboardCounts.weaponInstances}</strong>
-            </div>
-            <div className="card">
-              <div className="muted">Materia Definitions</div>
-              <strong>{dashboardCounts.materiaDefinitions}</strong>
-            </div>
-            <div className="card">
-              <div className="muted">Plots</div>
-              <strong>{dashboardCounts.plots}</strong>
-            </div>
-            <div className="card">
-              <div className="muted">Players</div>
-              <strong>{dashboardCounts.players}</strong>
-            </div>
-          </div>
-        )}
+          )}
+        </ErrorBoundary>
       </section>
 
       <section className="panel">
@@ -276,16 +258,23 @@ export default function App() {
         >
           <div>
             <div id="city-map-capture">
-              <InfinityMap
-                plots={visiblePlots}
-                selectedPlot={selectedPlot}
-                onSelectPlot={setSelectedPlot}
-                showLabels={showLabels}
-                heatmapMode={heatmapMode}
-              />
+              <ErrorBoundary
+                onError={(error) => console.error('Map ErrorBoundary:', error)}
+                resetKeys={[onlyFavorites, favoriteIds]}
+              >
+                <PaginatedPlotList
+                  selectedPlot={selectedPlot}
+                  onSelectPlot={setSelectedPlot}
+                  showLabels={showLabels}
+                  heatmapMode={heatmapMode}
+                  onlyFavorites={onlyFavorites}
+                  favoriteIds={favoriteIds}
+                  pageSize={50}
+                />
+              </ErrorBoundary>
             </div>
 
-            <CityStats plots={plots} />
+            <CityStats plots={basePlots} />
           </div>
 
           <PlotDetails
