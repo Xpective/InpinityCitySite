@@ -3,12 +3,14 @@ import CityStats from "./components/city/CityStats";
 import CityToolbar from "./components/city/CityToolbar";
 import PlotDetails from "./components/city/PlotDetails";
 import InfinityMap from "./components/city/InfinityMap";
+import MintPreparationPanel from "./components/city/MintPreparationPanel";
 
 import { getFavoritePlotIds, toggleFavoritePlot } from "./lib/favorites";
 import { requestGraphQL } from "./lib/graphql";
 import { CITY_DASHBOARD_QUERY } from "./lib/queries";
 import { generateInfinityPlots } from "./lib/infinity-layout";
 import { hydratePlots } from "./lib/city-map-merge";
+import { getPlotEligibility, type WalletState } from "./lib/eligibility";
 
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import ErrorMessage from "./components/common/ErrorMessage";
@@ -114,6 +116,12 @@ export default function App() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selectedPlot, setSelectedPlot] = useState<InfinityPlot | null>(null);
 
+  const [wallet, setWallet] = useState<WalletState>({
+    isConnected: false,
+    address: null,
+    chainId: null,
+  });
+
   const [dashboard, setDashboard] = useState<DashboardQueryResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AppError | null>(null);
@@ -167,9 +175,84 @@ export default function App() {
     };
   }, [retryCount]);
 
+  useEffect(() => {
+    async function syncWalletState() {
+      const ethereum = (window as Window & {
+        ethereum?: {
+          request: (args: { method: string }) => Promise<unknown>;
+        };
+      }).ethereum;
+
+      if (!ethereum) return;
+
+      try {
+        const accounts = (await ethereum.request({
+          method: "eth_accounts",
+        })) as string[];
+
+        const chainIdHex = (await ethereum.request({
+          method: "eth_chainId",
+        })) as string;
+
+        const chainId = parseInt(chainIdHex, 16);
+
+        if (accounts?.length) {
+          setWallet({
+            isConnected: true,
+            address: accounts[0],
+            chainId,
+          });
+        } else {
+          setWallet({
+            isConnected: false,
+            address: null,
+            chainId,
+          });
+        }
+      } catch (walletError) {
+        console.warn("Wallet sync failed:", walletError);
+      }
+    }
+
+    syncWalletState();
+  }, []);
+
   const handleRetry = (): void => {
     setRetryCount((prev) => prev + 1);
     setError(null);
+  };
+
+  const handleConnectWallet = async (): Promise<void> => {
+    const ethereum = (window as Window & {
+      ethereum?: {
+        request: (args: { method: string }) => Promise<unknown>;
+      };
+    }).ethereum;
+
+    if (!ethereum) {
+      alert("No injected wallet found. Please install MetaMask or another EVM wallet.");
+      return;
+    }
+
+    try {
+      const accounts = (await ethereum.request({
+        method: "eth_requestAccounts",
+      })) as string[];
+
+      const chainIdHex = (await ethereum.request({
+        method: "eth_chainId",
+      })) as string;
+
+      const chainId = parseInt(chainIdHex, 16);
+
+      setWallet({
+        isConnected: !!accounts?.length,
+        address: accounts?.[0] || null,
+        chainId,
+      });
+    } catch (walletError) {
+      console.error("Wallet connect failed:", walletError);
+    }
   };
 
   const dashboardCounts = useMemo(() => {
@@ -205,6 +288,10 @@ export default function App() {
       return true;
     });
   }, [hydratedPlots, searchTerm, availabilityFilter, specialFilter, favoriteIds]);
+
+  const eligibility = useMemo(() => {
+    return getPlotEligibility(selectedPlot, wallet);
+  }, [selectedPlot, wallet]);
 
   useEffect(() => {
     if (!selectedPlot) return;
@@ -396,10 +483,19 @@ export default function App() {
             <CityStats plots={filteredPlots} />
           </div>
 
-          <PlotDetails
-            plot={selectedPlot}
-            onToggleFavorite={handleToggleFavorite}
-          />
+          <div style={{ display: "grid", gap: 20 }}>
+            <PlotDetails
+              plot={selectedPlot}
+              onToggleFavorite={handleToggleFavorite}
+            />
+
+            <MintPreparationPanel
+              plot={selectedPlot}
+              wallet={wallet}
+              eligibility={eligibility}
+              onConnectWallet={handleConnectWallet}
+            />
+          </div>
         </div>
       </section>
 
@@ -407,12 +503,11 @@ export default function App() {
         <h2>Marriage phase: mock layout + live subgraph</h2>
         <p>
           The ∞ layout stays visual-first. Real subgraph data is now bound onto the
-          city vision through the merge layer, without enabling wallet connection or
-          buying yet.
+          city vision through the merge layer, without enabling final minting yet.
         </p>
         <p style={{ marginBottom: 0 }}>
-          Next step: refine exact plot-to-layout assignment, then expose stronger
-          ownership, inactivity, maintenance and provenance overlays.
+          Next step: activate deeper resource checks from farming, then wire the
+          real reservation flow before finally enabling mint.
         </p>
       </section>
     </div>

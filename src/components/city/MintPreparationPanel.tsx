@@ -1,0 +1,182 @@
+import type { InfinityPlot } from "../../types/infinity";
+import type { PlotEligibility, WalletState } from "../../lib/eligibility";
+
+type Props = {
+  plot: InfinityPlot | null;
+  wallet: WalletState;
+  eligibility: PlotEligibility;
+  onConnectWallet: () => void;
+};
+
+function pretty(value: string): string {
+  return value
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function shortAddress(address?: string | null): string {
+  if (!address) return "—";
+  if (address.length < 10) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function badgeStyle(kind: "ok" | "bad" | "neutral"): React.CSSProperties {
+  if (kind === "ok") {
+    return {
+      background: "rgba(89,255,43,0.14)",
+      border: "1px solid rgba(89,255,43,0.35)",
+      color: "#9aff84",
+      padding: "6px 10px",
+      borderRadius: 999,
+      fontSize: 12,
+      fontWeight: 700,
+    };
+  }
+
+  if (kind === "bad") {
+    return {
+      background: "rgba(255,90,90,0.14)",
+      border: "1px solid rgba(255,90,90,0.35)",
+      color: "#ff9d9d",
+      padding: "6px 10px",
+      borderRadius: 999,
+      fontSize: 12,
+      fontWeight: 700,
+    };
+  }
+
+  return {
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    color: "#d7dbe3",
+    padding: "6px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 700,
+  };
+}
+
+export default function MintPreparationPanel({
+  plot,
+  wallet,
+  eligibility,
+  onConnectWallet,
+}: Props) {
+  return (
+    <section className="panel">
+      <h2>Qubiq Preparation</h2>
+
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gap: 8,
+            padding: 12,
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.035)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <div>
+            <strong>Wallet:</strong> {wallet.isConnected ? shortAddress(wallet.address) : "Not connected"}
+          </div>
+          <div>
+            <strong>Chain:</strong> {wallet.chainId ?? "—"}
+          </div>
+          {!wallet.isConnected && (
+            <button className="toolbarButton active" onClick={onConnectWallet}>
+              Connect Wallet
+            </button>
+          )}
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gap: 8,
+            padding: 12,
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.035)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <div><strong>Selected Plot:</strong> {plot?.label || "—"}</div>
+          <div><strong>Kind:</strong> {plot ? pretty(plot.plotKind) : "—"}</div>
+          <div><strong>Status:</strong> {plot ? pretty(plot.status) : "—"}</div>
+          <div><strong>Faction:</strong> {plot ? pretty(plot.faction) : "—"}</div>
+          <div><strong>Tier:</strong> {plot ? pretty(plot.tier) : "—"}</div>
+          <div><strong>Estimated Value:</strong> {plot ? `${plot.valueModel?.finalEstimate || plot.priceEstimate} PIT` : "—"}</div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gap: 8,
+            padding: 12,
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.035)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <strong>Eligibility Checks</strong>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {eligibility.checks.map((check) => (
+              <span
+                key={check.key}
+                style={badgeStyle(check.passed ? "ok" : "bad")}
+              >
+                {check.passed ? "✓" : "✗"} {check.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gap: 8,
+            padding: 12,
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.035)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <strong>Rules / Notes</strong>
+          {eligibility.reasons.map((reason, index) => (
+            <div key={index}>• {reason}</div>
+          ))}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            className="toolbarButton"
+            disabled={!eligibility.reservable}
+            title={eligibility.reservable ? "Reservation preview ready" : "Eligibility not met"}
+          >
+            Prepare Reservation
+          </button>
+
+          <button
+            className="toolbarButton"
+            disabled
+            title="Mint is intentionally disabled in this phase"
+          >
+            Mint Qubiq (Coming Soon)
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
