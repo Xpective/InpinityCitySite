@@ -49,4 +49,29 @@ export type InfinityPlot = {
   ownerLabel?: string;
   lastTransferDaysAgo?: number;
   isFavorite?: boolean;
+
+  // Optionale Felder aus Subgraph (für mergeMapData)
+  plotId?: string;
+  owner?: string;
+  createdAt?: number;
+  exists?: boolean;
+  provenance?: {
+    firstBuilder?: string;
+    createdAt?: number;
+    layerCount: number;
+    ownershipTransfers: number;
+    aetherUses: number;
+    historicScore: number;
+    originFaction: string;
+    genesisEra: boolean;
+    lastUpdated?: number;
+  };
+  statusInfo?: {
+    lastActivityAt?: number;
+    lastMaintenanceAt?: number;
+    manualStatusOverride?: string;
+    derivedStatus: string;
+    layerEligible: boolean;
+    updatedAt?: number;
+  };
 };

@@ -6,10 +6,10 @@ import PlotDetails from "./components/city/PlotDetails";
 import { getFavoritePlotIds, toggleFavoritePlot } from "./lib/favorites";
 import { requestGraphQL } from "./lib/graphql";
 import { CITY_DASHBOARD_QUERY } from "./lib/queries";
-import { buildDashboardCounts, mergeCityDataIntoPlots } from "./lib/city-map-merge";
+import { mergeMapData } from "./lib/city-map-merge";
 import { generateInfinityPlots } from "./lib/infinity-layout";
 import "./styles/global.css";
-import type { CityDashboardQueryResult } from "./types/city";
+import type { DashboardQueryResult } from "./types/city";
 import type { InfinityPlot } from "./types/infinity";
 
 function downloadMapPng(): void {
@@ -37,7 +37,7 @@ export default function App() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selectedPlot, setSelectedPlot] = useState<InfinityPlot | null>(null);
 
-  const [dashboard, setDashboard] = useState<CityDashboardQueryResult | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardQueryResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
@@ -53,7 +53,7 @@ export default function App() {
         setLoading(true);
         setError("");
 
-        const data = await requestGraphQL<CityDashboardQueryResult>(CITY_DASHBOARD_QUERY);
+        const data = await requestGraphQL<DashboardQueryResult>(CITY_DASHBOARD_QUERY);
 
         if (!cancelled) {
           setDashboard(data);
@@ -82,12 +82,22 @@ export default function App() {
       isFavorite: favoriteIds.includes(plot.id),
     }));
 
-    const merged = dashboard ? mergeCityDataIntoPlots(basePlots, dashboard) : basePlots;
+    if (!dashboard) return basePlots;
 
-    return merged.map((plot) => ({
-      ...plot,
-      isFavorite: favoriteIds.includes(plot.id),
-    }));
+    const merged = mergeMapData(dashboard);
+    const mergedMap = new Map(merged.map(p => [p.id, p]));
+
+    return basePlots.map((plot) => {
+      const mergedData = mergedMap.get(plot.id);
+      if (mergedData) {
+        return {
+          ...plot,
+          ...mergedData,
+          isFavorite: plot.isFavorite,
+        };
+      }
+      return plot;
+    });
   }, [dashboard, favoriteIds]);
 
   const visiblePlots = useMemo(() => {
@@ -96,18 +106,28 @@ export default function App() {
   }, [plots, onlyFavorites, favoriteIds]);
 
   const dashboardCounts = useMemo(() => {
-    return dashboard ? buildDashboardCounts(dashboard) : null;
+    if (!dashboard) return null;
+    return {
+      indexerBlock: dashboard._meta?.block?.number || 0,
+      weaponDefinitions: dashboard.weaponDefinitions?.length || 0,
+      weaponInstances: dashboard.weaponInstances?.length || 0,
+      materiaDefinitions: dashboard.materiaDefinitions?.length || 0,
+      plots: dashboard.plots?.length || 0,
+      players: dashboard.players?.length || 0,
+    };
   }, [dashboard]);
 
   function handleJump(): void {
     const term = search.trim().toLowerCase();
     if (!term) return;
 
-    const found = plots.find((plot) => {
+    const found = plots.find((plot: InfinityPlot) => {
+      const plotId = plot.plotId || plot.id;
+      const owner = plot.owner || "";
       return (
-        plot.label.toLowerCase().includes(term) ||
+        plotId.toLowerCase().includes(term) ||
         plot.id.toLowerCase().includes(term) ||
-        (plot.ownerLabel || "").toLowerCase().includes(term)
+        owner.toLowerCase().includes(term)
       );
     });
 
