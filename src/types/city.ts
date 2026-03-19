@@ -1,55 +1,10 @@
-export type MetaBlock = {
-  number: string;
-};
 
-export type MetaData = {
-  block: MetaBlock;
-};
-
-export type CityPlayer = {
-  id: string;
-  cityKeyTokenId: string | null;
-  faction: string | null;
-  personalPlotCount: string | null;
-  craftedWeapons?: string[] | null;
-};
-
-export type CityPlot = {
-  id: string;
-  plotId: string;
-  owner: {
-    id: string;
-  } | null;
-  plotType: string | null;
-  faction: string | null;
-  status: string | null;
-  width: string | null;
-  height: string | null;
-  createdAt: string | null;
-  exists: boolean | null;
-};
-
-export type PlotStatusInfo = {
-  id: string;
-  currentStatus: string | null;
-  updatedAt: string | null;
-  activatedAt: string | null;
-  lastMaintenanceAt: string | null;
-  inactivityWarningAt: string | null;
-};
-
-export type PlotProvenance = {
-  id: string;
-  plotId: string;
-  currentOwner: string | null;
-  transferCount: string | null;
-  lastTransferAt: string | null;
-};
-
-export type WeaponDefinitionLite = {
+export type WeaponDefinition = {
   id: string;
   weaponDefinitionId: string;
   name: string;
+  classId: string;
+  damageTypeId: string;
   techTier: string;
   minDamage: string;
   maxDamage: string;
@@ -58,37 +13,98 @@ export type WeaponDefinitionLite = {
   enabled: boolean;
 };
 
-export type WeaponInstanceLite = {
+export type WeaponInstance = {
   id: string;
   tokenId: string;
   owner: string;
   rarityTier: string;
   upgradeLevel: string;
   durability: string;
-  originPlotId: string | null;
-  weaponDefinition: {
+  originPlotId: string;
+  weaponDefinition?: {
     id: string;
     name: string;
-  };
+  } | null;
 };
 
-export type MateriaDefinitionLite = {
+export type MateriaDefinition = {
   id: string;
   materiaId: string;
   name: string;
   categoryLabel: string;
   elementLabel: string;
+  rarityTier: string;
   maxLevel: string;
   enabled: boolean;
 };
 
-export type CityDashboardQueryResult = {
-  _meta: MetaData;
-  players: CityPlayer[];
-  plots: CityPlot[];
+export type Plot = {
+  id: string;
+  plotId: string;
+  plotType: string;
+  faction: string;
+  status: string;
+  width: string;
+  height: string;
+  exists: boolean;
+  createdAt: string;
+  owner?: {
+    id: string;
+  } | null;
+};
+
+export type Player = {
+  id: string;
+  cityKeyTokenId?: string | null;
+  faction?: string | null;
+  personalPlotCount?: string | null;
+  craftedWeapons?: string | null;
+};
+
+export type PlotStatusInfo = {
+  id: string;
+  plot?: {
+    id: string;
+    plotId: string;
+  } | null;
+  lastActivityAt?: string | null;
+  lastMaintenanceAt?: string | null;
+  manualStatusOverride?: string | null;
+  derivedStatus?: string | null;
+  layerEligible?: boolean | null;
+  updatedAtBlock?: string | null;
+  updatedAtTimestamp?: string | null;
+};
+
+export type PlotProvenance = {
+  id: string;
+  plot?: {
+    id: string;
+    plotId: string;
+  } | null;
+  firstBuilder?: string | null;
+  createdAt?: string | null;
+  layerCount?: string | null;
+  ownershipTransfers?: string | null;
+  aetherUses?: string | null;
+  historicScore?: string | null;
+  originFaction?: string | null;
+  genesisEra?: string | null;
+  updatedAtBlock?: string | null;
+  updatedAtTimestamp?: string | null;
+};
+
+export type DashboardQueryResult = {
+  _meta: {
+    block: {
+      number: number;
+    };
+  };
+  weaponDefinitions: WeaponDefinition[];
+  weaponInstances: WeaponInstance[];
+  materiaDefinitions: MateriaDefinition[];
+  plots: Plot[];
+  players: Player[];
   plotStatusInfos: PlotStatusInfo[];
   plotProvenances: PlotProvenance[];
-  weaponDefinitions: WeaponDefinitionLite[];
-  weaponInstances: WeaponInstanceLite[];
-  materiaDefinitions: MateriaDefinitionLite[];
 };
