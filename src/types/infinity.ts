@@ -97,7 +97,7 @@ export type InfinityPlot = {
   y: number;
   width: number;
   height: number;
-  lane: number;
+  lane: number; 
   side: InfinityRingSide;
   distanceToNexus: number;
   rarity: InfinityRarity;
