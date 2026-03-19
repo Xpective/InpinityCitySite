@@ -46,12 +46,14 @@ async function getProvider() {
 }
 
 export async function readCityConfigSnapshot(): Promise<CityConfigSnapshot> {
-  if (!CONFIG.cityConfigAddress) {
+  const cityConfigAddress = (CONFIG.cityConfigAddress || "").trim();
+
+  if (!cityConfigAddress) {
     throw new Error("Missing VITE_CITY_CONFIG_ADDRESS.");
   }
 
   const provider = await getProvider();
-  const contract = new Contract(CONFIG.cityConfigAddress, CITY_CONFIG_ABI, provider);
+  const contract = new Contract(cityConfigAddress, CITY_CONFIG_ABI, provider);
 
   const [
     keyResourceToken,
