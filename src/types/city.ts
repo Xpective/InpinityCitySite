@@ -6,92 +6,89 @@ export type MetaData = {
   block: MetaBlock;
 };
 
-export type WeaponDefinition = {
+export type CityPlayer = {
+  id: string;
+  cityKeyTokenId: string | null;
+  faction: string | null;
+  personalPlotCount: string | null;
+  craftedWeapons?: string[] | null;
+};
+
+export type CityPlot = {
+  id: string;
+  plotId: string;
+  owner: {
+    id: string;
+  } | null;
+  plotType: string | null;
+  faction: string | null;
+  status: string | null;
+  width: string | null;
+  height: string | null;
+  createdAt: string | null;
+  exists: boolean | null;
+};
+
+export type PlotStatusInfo = {
+  id: string;
+  currentStatus: string | null;
+  updatedAt: string | null;
+  activatedAt: string | null;
+  lastMaintenanceAt: string | null;
+  inactivityWarningAt: string | null;
+};
+
+export type PlotProvenance = {
+  id: string;
+  plotId: string;
+  currentOwner: string | null;
+  transferCount: string | null;
+  lastTransferAt: string | null;
+};
+
+export type WeaponDefinitionLite = {
   id: string;
   weaponDefinitionId: string;
   name: string;
-  classId: string;
-  damageTypeId: string;
   techTier: string;
-  requiredLevel: string;
   minDamage: string;
   maxDamage: string;
-  attackSpeed: string;
-  maxDurability: string;
   enchantmentSlots: string;
   materiaSlots: string;
   enabled: boolean;
 };
 
-export type WeaponInstanceOwner = {
-  id: string;
-};
-
-export type WeaponInstanceDefinition = {
-  id: string;
-  name: string;
-};
-
-export type WeaponInstance = {
+export type WeaponInstanceLite = {
   id: string;
   tokenId: string;
+  owner: string;
   rarityTier: string;
-  frameTier: string;
-  durability: string;
   upgradeLevel: string;
-  originPlotId: string;
-  originFaction: string;
-  originDistrictKind: string;
-  craftedAt: string;
-  resonanceType: string;
-  usedAether: boolean;
-  owner: WeaponInstanceOwner | null;
-  weaponDefinition: WeaponInstanceDefinition | null;
+  durability: string;
+  originPlotId: string | null;
+  weaponDefinition: {
+    id: string;
+    name: string;
+  };
 };
 
-export type MateriaDefinition = {
+export type MateriaDefinitionLite = {
   id: string;
   materiaId: string;
   name: string;
-  categoryRaw: string;
   categoryLabel: string;
-  elementRaw: string;
   elementLabel: string;
-  rarityTier: string;
   maxLevel: string;
   enabled: boolean;
 };
 
-export type PlotOwner = {
-  id: string;
-};
-
-export type Plot = {
-  id: string;
-  plotId: string;
-  plotType: string;
-  faction: string;
-  status: string;
-  width: string;
-  height: string;
-  createdAt: string;
-  exists: boolean;
-  owner: PlotOwner | null;
-};
-
-export type Player = {
-  id: string;
-  cityKeyTokenId: string | null;
-  faction: string;
-  personalPlotCount: string;
-  craftedWeapons: string;
-};
-
-export type DashboardQueryResult = {
+export type CityDashboardQueryResult = {
   _meta: MetaData;
-  weaponDefinitions: WeaponDefinition[];
-  weaponInstances: WeaponInstance[];
-  materiaDefinitions: MateriaDefinition[];
-  plots: Plot[];
-  players: Player[];
+  players: CityPlayer[];
+  plots: CityPlot[];
+  plotStatusInfos: PlotStatusInfo[];
+  plotProvenances: PlotProvenance[];
+  weaponDefinitions: WeaponDefinitionLite[];
+  weaponInstances: WeaponInstanceLite[];
+  materiaDefinitions: MateriaDefinitionLite[];
 };

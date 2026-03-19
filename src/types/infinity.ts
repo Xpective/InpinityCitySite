@@ -24,7 +24,11 @@ export type InfinityPlotStatus =
   | "nexus"
   | "locked";
 
-export type InfinityPlotKind = "personal-5x5" | "community-25x25" | "borderline-25x25" | "nexus";
+export type InfinityPlotKind =
+  | "personal-5x5"
+  | "community-25x25"
+  | "borderline-25x25"
+  | "nexus";
 
 export type InfinityPlot = {
   id: string;

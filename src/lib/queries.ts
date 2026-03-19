@@ -1,66 +1,25 @@
-export const DASHBOARD_QUERY = `
-  query DashboardQuery {
+export const CITY_DASHBOARD_QUERY = `
+  query CityDashboard {
     _meta {
       block {
         number
       }
     }
 
-    weaponDefinitions(first: 12, orderBy: weaponDefinitionId, orderDirection: asc) {
+    players(first: 200, orderBy: id, orderDirection: asc) {
       id
-      weaponDefinitionId
-      name
-      classId
-      damageTypeId
-      techTier
-      requiredLevel
-      minDamage
-      maxDamage
-      attackSpeed
-      maxDurability
-      enchantmentSlots
-      materiaSlots
-      enabled
+      cityKeyTokenId
+      faction
+      personalPlotCount
+      craftedWeapons
     }
 
-    weaponInstances(first: 12, orderBy: tokenId, orderDirection: asc) {
+    plots(first: 400, orderBy: plotId, orderDirection: asc) {
       id
-      tokenId
-      rarityTier
-      frameTier
-      durability
-      upgradeLevel
-      originPlotId
-      originFaction
-      originDistrictKind
-      craftedAt
-      resonanceType
-      usedAether
+      plotId
       owner {
         id
       }
-      weaponDefinition {
-        id
-        name
-      }
-    }
-
-    materiaDefinitions(first: 12, orderBy: materiaId, orderDirection: asc) {
-      id
-      materiaId
-      name
-      categoryRaw
-      categoryLabel
-      elementRaw
-      elementLabel
-      rarityTier
-      maxLevel
-      enabled
-    }
-
-    plots(first: 12, orderBy: plotId, orderDirection: asc) {
-      id
-      plotId
       plotType
       faction
       status
@@ -68,17 +27,59 @@ export const DASHBOARD_QUERY = `
       height
       createdAt
       exists
-      owner {
+    }
+
+    plotStatusInfos(first: 400, orderBy: id, orderDirection: asc) {
+      id
+      currentStatus
+      updatedAt
+      activatedAt
+      lastMaintenanceAt
+      inactivityWarningAt
+    }
+
+    plotProvenances(first: 400, orderBy: plotId, orderDirection: asc) {
+      id
+      plotId
+      currentOwner
+      transferCount
+      lastTransferAt
+    }
+
+    weaponDefinitions(first: 12, orderBy: weaponDefinitionId, orderDirection: asc) {
+      id
+      weaponDefinitionId
+      name
+      techTier
+      minDamage
+      maxDamage
+      enchantmentSlots
+      materiaSlots
+      enabled
+    }
+
+    weaponInstances(first: 24, orderBy: tokenId, orderDirection: asc) {
+      id
+      tokenId
+      owner
+      rarityTier
+      upgradeLevel
+      durability
+      originPlotId
+      weaponDefinition {
         id
+        name
       }
     }
 
-    players(first: 12, orderBy: id, orderDirection: asc) {
+    materiaDefinitions(first: 24, orderBy: materiaId, orderDirection: asc) {
       id
-      cityKeyTokenId
-      faction
-      personalPlotCount
-      craftedWeapons
+      materiaId
+      name
+      categoryLabel
+      elementLabel
+      maxLevel
+      enabled
     }
   }
 `;
