@@ -25,7 +25,6 @@ function mix(a: number, b: number, t: number): number {
 function getPersonalSideColor(plot: InfinityPlot): string {
   const t = Math.min(plot.distanceToNexus / 380, 1);
 
-  // Zur Mitte hin Gold, nach außen entsättigt aber nicht grau tot
   if (plot.side === "left") {
     const inner = { r: 245, g: 196, b: 110 };
     const outer = { r: 134, g: 122, b: 116 };
@@ -131,7 +130,7 @@ export default function InfinityMap({
           strokeWidth="3"
         />
 
-        {/* Brücke */}
+        {/* HORIZONTALE BRÜCKE */}
         <rect
           x={CENTER_X - 210}
           y={CENTER_Y - 10}
@@ -142,19 +141,44 @@ export default function InfinityMap({
           filter="url(#nexusGlow)"
         />
 
+        {/* VERTIKALE KREUZ-ACHSE / BRÜCKE */}
+        <rect
+          x={CENTER_X - 10}
+          y={CENTER_Y - 240}
+          width={20}
+          height={480}
+          rx={8}
+          fill="rgba(245,206,126,0.78)"
+          filter="url(#nexusGlow)"
+        />
+
+        {/* LEUCHTENDER KREUZ-KERN */}
+        <rect
+          x={CENTER_X - 18}
+          y={CENTER_Y - 18}
+          width={36}
+          height={36}
+          rx={10}
+          fill="rgba(255,232,160,0.96)"
+          filter="url(#nexusGlow)"
+        />
+
         {plots.map((plot) => {
           const selected = selectedPlot?.id === plot.id;
           const fill = getPlotFill(plot, heatmapMode);
           const stroke = getFactionStroke(plot.faction);
           const opacity = getStatusOpacity(plot.status);
 
+          const width = selected ? plot.width * 1.12 : plot.width;
+          const height = selected ? plot.height * 1.12 : plot.height;
+
           return (
             <g key={plot.id} onClick={() => onSelectPlot(plot)} style={{ cursor: "pointer" }}>
               <rect
-                x={plot.x - plot.width / 2}
-                y={plot.y - plot.height / 2}
-                width={selected ? plot.width * 1.12 : plot.width}
-                height={selected ? plot.height * 1.12 : plot.height}
+                x={plot.x - width / 2}
+                y={plot.y - height / 2}
+                width={width}
+                height={height}
                 rx={plot.plotKind === "personal-5x5" ? 4 : 7}
                 ry={plot.plotKind === "personal-5x5" ? 4 : 7}
                 fill={fill}
@@ -180,10 +204,23 @@ export default function InfinityMap({
           );
         })}
 
-        <text x={CENTER_X - 520} y={CENTER_Y + 5} fill="rgba(255,235,190,0.95)" fontSize="26" fontWeight="700">
+        <text
+          x={CENTER_X - 520}
+          y={CENTER_Y + 5}
+          fill="rgba(255,235,190,0.95)"
+          fontSize="26"
+          fontWeight="700"
+        >
           INPINITY
         </text>
-        <text x={CENTER_X + 330} y={CENTER_Y + 5} fill="rgba(225,235,255,0.95)" fontSize="26" fontWeight="700">
+
+        <text
+          x={CENTER_X + 330}
+          y={CENTER_Y + 5}
+          fill="rgba(225,235,255,0.95)"
+          fontSize="26"
+          fontWeight="700"
+        >
           INPHINITY
         </text>
       </svg>
