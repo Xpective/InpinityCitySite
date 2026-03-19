@@ -1,119 +1,183 @@
-import { useMemo, useState } from "react";
-import "./styles/global.css";
+import { useEffect, useMemo, useState } from "react";
+import CityStats from "./components/city/CityStats";
+import CityToolbar from "./components/city/CityToolbar";
 import InfinityMap from "./components/city/InfinityMap";
 import PlotDetails from "./components/city/PlotDetails";
-import { buildInfinityPlots, filterPlots } from "./lib/infinity-layout";
-import type { InfinityPlot, InfinityPlotStatus } from "./types/infinity";
+import { getFavoritePlotIds, toggleFavoritePlot } from "./lib/favorites";
+import { TEXT } from "./lib/i18n";
+import { generateInfinityPlots } from "./lib/infinity-layout";
+import "./styles/global.css";
+import type { InfinityPlot } from "./types/infinity";
 
-type FilterValue = "all" | InfinityPlotStatus;
+function downloadMapPng(): void {
+  const svg = document.querySelector("#city-map-capture svg") as SVGElement | null;
+  if (!svg) return;
+
+  const serializer = new XMLSerializer();
+  const source = serializer.serializeToString(svg);
+  const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "inpinity-city-map.svg";
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
 
 export default function App() {
-  const plots = useMemo(() => buildInfinityPlots(), []);
+  const [search, setSearch] = useState("");
+  const [showLabels, setShowLabels] = useState(true);
+  const [heatmapMode, setHeatmapMode] = useState(false);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selectedPlot, setSelectedPlot] = useState<InfinityPlot | null>(null);
-  const [showLabels, setShowLabels] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<FilterValue>("all");
 
-  const visiblePlots = useMemo(
-    () => filterPlots(plots, activeFilter),
-    [plots, activeFilter]
-  );
+  useEffect(() => {
+    setFavoriteIds(getFavoritePlotIds());
+  }, []);
 
-  const totalPlots = plots.length;
-  const personalPlots = plots.filter((p) => p.kind === "personal").length;
-  const communityPlots = plots.filter((p) => p.kind === "community").length;
-  const freePlots = plots.filter((p) => p.status === "free").length;
-  const reservedPlots = plots.filter((p) => p.status === "reserved").length;
-  const ownedPlots = plots.filter((p) => p.status === "owned").length;
+  const plots = useMemo(() => {
+    return generateInfinityPlots().map((plot) => ({
+      ...plot,
+      isFavorite: favoriteIds.includes(plot.id),
+    }));
+  }, [favoriteIds]);
 
-  function setFilter(filter: FilterValue) {
-    setActiveFilter(filter);
-    if (selectedPlot && filter !== "all" && selectedPlot.status !== filter) {
-      setSelectedPlot(null);
+  const visiblePlots = useMemo(() => {
+    if (!onlyFavorites) return plots;
+    return plots.filter((plot) => favoriteIds.includes(plot.id));
+  }, [plots, onlyFavorites, favoriteIds]);
+
+  function handleJump(): void {
+    const term = search.trim().toLowerCase();
+    if (!term) return;
+
+    const found = plots.find((plot) => {
+      return (
+        plot.label.toLowerCase().includes(term) ||
+        plot.id.toLowerCase().includes(term) ||
+        (plot.ownerLabel || "").toLowerCase().includes(term)
+      );
+    });
+
+    if (found) {
+      setSelectedPlot(found);
     }
   }
 
+  function handleToggleFavorite(id: string): void {
+    setFavoriteIds(toggleFavoritePlot(id));
+  }
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (!plots.length) return;
+
+      const currentIndex = selectedPlot
+        ? plots.findIndex((p) => p.id === selectedPlot.id)
+        : -1;
+
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        const next = plots[(currentIndex + 1 + plots.length) % plots.length];
+        setSelectedPlot(next);
+      }
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        const next = plots[(currentIndex - 1 + plots.length) % plots.length];
+        setSelectedPlot(next);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [plots, selectedPlot]);
+
   return (
     <div className="page">
-      <section className="hero panel">
-        <p className="eyebrow">INPINITY CITY</p>
-        <h1>Infinity Qubiq Layout</h1>
-        <p className="heroText">
-          Die City wird als visuelle ∞-Struktur aufgebaut: 5×5 Personal-Plots entlang
-          der beiden Ringe und 25×25 Community-Plots nahe der beiden Nexus-Zentren.
-          Wertvollere Flächen liegen näher am Zentrum, nach außen wird das Bild kühler
-          und grauer.
-        </p>
-      </section>
+      <header className="hero panel">
+        <h1>{TEXT.title}</h1>
+        <p className="subtitle">{TEXT.subtitle}</p>
+
+        <div className="configGrid">
+          <div>
+            <strong>Chain ID:</strong> 8453
+          </div>
+          <div>
+            <strong>Subgraph Proxy:</strong> https://api.city.inpinity.online/graphql
+          </div>
+          <div>
+            <strong>CityRegistry:</strong> follows
+          </div>
+          <div>
+            <strong>CityLand:</strong> follows
+          </div>
+          <div>
+            <strong>CityConfig:</strong> follows
+          </div>
+          <div>
+            <strong>CityStatus:</strong> follows
+          </div>
+        </div>
+      </header>
 
       <section className="panel">
-        <h2>Übersicht</h2>
-        <div className="cards">
-          <button className="statCard" onClick={() => setFilter("all")}>
-            <span className="statLabel">Total</span>
-            <strong>{totalPlots}</strong>
-          </button>
-
-          <div className="statCard">
-            <span className="statLabel">5×5 Personal</span>
-            <strong>{personalPlots}</strong>
-          </div>
-
-          <div className="statCard">
-            <span className="statLabel">25×25 Community</span>
-            <strong>{communityPlots}</strong>
-          </div>
-
-          <button className="statCard" onClick={() => setFilter("free")}>
-            <span className="statLabel">Free</span>
-            <strong>{freePlots}</strong>
-          </button>
-
-          <button className="statCard" onClick={() => setFilter("reserved")}>
-            <span className="statLabel">Reserved</span>
-            <strong>{reservedPlots}</strong>
-          </button>
-
-          <button className="statCard" onClick={() => setFilter("owned")}>
-            <span className="statLabel">Owned</span>
-            <strong>{ownedPlots}</strong>
-          </button>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
-          <button onClick={() => setShowLabels((v) => !v)}>
-            {showLabels ? "Labels ausblenden" : "Labels anzeigen"}
-          </button>
-          <button onClick={() => setFilter("community")}>Nur Community</button>
-          <button onClick={() => setFilter("free")}>Nur freie Plots</button>
-          <button onClick={() => setFilter("owned")}>Nur besetzte Plots</button>
-          <button onClick={() => setFilter("all")}>Alle anzeigen</button>
-        </div>
+        <h2>{TEXT.cityVisionTitle}</h2>
+        <p>{TEXT.cityVisionText}</p>
       </section>
 
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 2fr) minmax(290px, 1fr)",
-          gap: 20,
-        }}
-      >
+      <CityStats plots={plots} />
+
+      <section className="panel">
+        <h2>{TEXT.mapTitle}</h2>
+
+        <CityToolbar
+          search={search}
+          onSearchChange={setSearch}
+          onJump={handleJump}
+          showLabels={showLabels}
+          onToggleLabels={() => setShowLabels((v) => !v)}
+          heatmapMode={heatmapMode}
+          onToggleHeatmap={() => setHeatmapMode((v) => !v)}
+          onlyFavorites={onlyFavorites}
+          onToggleFavoritesOnly={() => setOnlyFavorites((v) => !v)}
+          onScreenshot={downloadMapPng}
+        />
+
         <InfinityMap
           plots={visiblePlots}
           selectedPlot={selectedPlot}
           onSelectPlot={setSelectedPlot}
           showLabels={showLabels}
-          activeFilter={activeFilter}
+          heatmapMode={heatmapMode}
         />
-        <PlotDetails plot={selectedPlot} />
+      </section>
+
+      <section className="panel splitPanel">
+        <PlotDetails plot={selectedPlot} onToggleFavorite={handleToggleFavorite} />
+
+        <div className="detailsCard">
+          <h3 style={{ marginTop: 0 }}>Qubiq Purchase Preparation</h3>
+          <div className="detailsGrid">
+            <div>Multiple central 25x25 plots reserved for Borderline and Community.</div>
+            <div>Outer rings host many personal 5x5 qubiq plots.</div>
+            <div>Left and right factions remain visually complementary.</div>
+            <div>Gold toward the nexus stays as the shared premium center.</div>
+            <div>Next: real free-plot data, reserve flow, price logic, wallet connection.</div>
+          </div>
+
+          <div className="buttonRow">
+            <button disabled>{TEXT.buttons.wallet}</button>
+            <button disabled>{TEXT.buttons.prepare}</button>
+            <button disabled>{TEXT.buttons.inspect}</button>
+          </div>
+        </div>
       </section>
 
       <section className="panel">
-        <h2>Nächster Schritt</h2>
-        <p style={{ marginBottom: 0 }}>
-          Jetzt ist die ∞-City visuell auf die 5×5- und 25×25-Logik vorbereitet. Danach
-          binden wir dieselbe Struktur an echte Plot-, Player- und Kaufdaten aus deinem
-          Subgraph und anschließend an den Reserve-/Kauf-Flow.
-        </p>
+        <h2>{TEXT.nextTitle}</h2>
+        <p style={{ marginBottom: 0 }}>{TEXT.nextText}</p>
       </section>
     </div>
   );

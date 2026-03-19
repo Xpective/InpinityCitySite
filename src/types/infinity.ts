@@ -1,39 +1,48 @@
-export type InfinityFaction = "inpinity" | "inphinity" | "neutral";
+export type InfinityRingSide = "left" | "right" | "center";
 
 export type InfinityRarity =
   | "common"
   | "uncommon"
   | "rare"
   | "epic"
-  | "legendary";
+  | "legendary"
+  | "mythic";
 
-export type InfinityRingSide = "left" | "right" | "bridge";
+export type InfinityFaction =
+  | "inpinity"
+  | "inphinity"
+  | "borderline"
+  | "community"
+  | "neutral";
 
 export type InfinityPlotStatus =
   | "free"
   | "reserved"
   | "owned"
+  | "community"
+  | "borderline"
   | "nexus"
-  | "locked"
-  | "community";
+  | "locked";
 
-export type InfinityPlotKind = "personal" | "community";
+export type InfinityPlotKind = "personal-5x5" | "community-25x25" | "borderline-25x25" | "nexus";
 
 export type InfinityPlot = {
   id: string;
   index: number;
   x: number;
   y: number;
-  size: number;
+  width: number;
+  height: number;
   lane: number;
   side: InfinityRingSide;
   distanceToNexus: number;
   rarity: InfinityRarity;
   faction: InfinityFaction;
   status: InfinityPlotStatus;
-  kind: InfinityPlotKind;
-  widthUnits: number;
-  heightUnits: number;
   label: string;
+  plotKind: InfinityPlotKind;
+  priceEstimate: number;
   ownerLabel?: string;
+  lastTransferDaysAgo?: number;
+  isFavorite?: boolean;
 };

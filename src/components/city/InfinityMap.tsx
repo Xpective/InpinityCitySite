@@ -1,33 +1,47 @@
-import { useMemo, useState } from "react";
-import type { InfinityPlot, InfinityPlotStatus } from "../../types/infinity";
+import type { InfinityPlot } from "../../types/infinity";
 import {
+  CENTER_X,
+  CENTER_Y,
+  SVG_HEIGHT,
+  SVG_WIDTH,
+  getFactionGlow,
   getFactionStroke,
-  getLaneWeight,
-  getPlotDisplaySize,
+  getInfinityPath,
   getRarityColor,
-  getStatusBadgeColor,
+  getStatusOpacity,
 } from "../../lib/infinity-layout";
 
-type InfinityMapProps = {
+type Props = {
   plots: InfinityPlot[];
   selectedPlot: InfinityPlot | null;
   onSelectPlot: (plot: InfinityPlot) => void;
   showLabels: boolean;
-  activeFilter: "all" | InfinityPlotStatus;
+  heatmapMode: boolean;
 };
 
-function toGray(hex: string, mix = 0.58): string {
-  const clean = hex.replace("#", "");
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
+function getHeatColor(plot: InfinityPlot): string {
+  const d = Math.min(plot.distanceToNexus, 360);
+  const intensity = 1 - d / 360;
 
-  const avg = Math.round((r + g + b) / 3);
-  const nr = Math.round(r * (1 - mix) + avg * mix);
-  const ng = Math.round(g * (1 - mix) + avg * mix);
-  const nb = Math.round(b * (1 - mix) + avg * mix);
+  if (plot.side === "left") {
+    const r = Math.round(255 - intensity * 25);
+    const g = Math.round(130 + intensity * 80);
+    const b = Math.round(80 - intensity * 40);
+    return `rgb(${r},${g},${Math.max(20, b)})`;
+  }
 
-  return `rgb(${nr}, ${ng}, ${nb})`;
+  if (plot.side === "right") {
+    const r = Math.round(90 + intensity * 70);
+    const g = Math.round(120 + intensity * 40);
+    const b = Math.round(255 - intensity * 20);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  return `rgb(${255 - intensity * 20}, ${220 - intensity * 10}, ${120})`;
+}
+
+function getPlotFill(plot: InfinityPlot, heatmapMode: boolean): string {
+  return heatmapMode ? getHeatColor(plot) : getRarityColor(plot.rarity);
 }
 
 export default function InfinityMap({
@@ -35,217 +49,113 @@ export default function InfinityMap({
   selectedPlot,
   onSelectPlot,
   showLabels,
-  activeFilter,
-}: InfinityMapProps) {
-  const [hoveredPlot, setHoveredPlot] = useState<InfinityPlot | null>(null);
-
-  const defs = useMemo(() => {
-    return plots.map((plot) => {
-      const rarityColor = getRarityColor(plot.rarity);
-      const outerColor = toGray(rarityColor, 0.74);
-      return {
-        id: plot.id,
-        gradientId: `grad-${plot.id}`,
-        rarityColor,
-        outerColor,
-      };
-    });
-  }, [plots]);
+  heatmapMode,
+}: Props) {
+  const infinityPath = getInfinityPath();
 
   return (
-    <div
-      style={{
-        width: "100%",
-        background:
-          "radial-gradient(circle at 50% 50%, rgba(88,28,135,0.18), rgba(15,23,42,0.92) 42%, rgba(2,6,23,1) 100%)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 26,
-        padding: 18,
-        overflow: "hidden",
-        position: "relative",
-      }}
-    >
-      <svg
-        viewBox="-360 -235 720 470"
-        style={{ width: "100%", height: "auto", display: "block" }}
-      >
+    <div className="mapWrap" id="city-map-capture">
+      <div className="mapLegend">
+        <div>Left: Inpinity</div>
+        <div>Right: Inphinity</div>
+        <div>Center: Borderline / Community</div>
+      </div>
+
+      <svg viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`} className="citySvg">
         <defs>
-          <filter id="nexusGlow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="6" result="blur" />
+          <filter id="softGlow">
+            <feGaussianBlur stdDeviation="8" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-
-          <filter id="ringGlow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
+          <filter id="nexusGlow">
+            <feGaussianBlur stdDeviation="12" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-
-          {defs.map((item) => (
-            <radialGradient
-              id={item.gradientId}
-              key={item.gradientId}
-              cx="35%"
-              cy="35%"
-              r="80%"
-            >
-              <stop offset="0%" stopColor={item.rarityColor} />
-              <stop offset="62%" stopColor={item.rarityColor} />
-              <stop offset="100%" stopColor={item.outerColor} />
-            </radialGradient>
-          ))}
         </defs>
 
-        <rect x="-360" y="-235" width="360" height="470" fill="rgba(120,60,60,0.05)" />
-        <rect x="0" y="-235" width="360" height="470" fill="rgba(80,110,170,0.05)" />
+        <foreignObject x="0" y="0" width={SVG_WIDTH / 2} height={SVG_HEIGHT}>
+          <div style={{ width: "100%", height: "100%", background: getFactionGlow("left") }} />
+        </foreignObject>
 
-        {Array.from({ length: 80 }).map((_, i) => {
-          const x = ((i * 97) % 680) - 340;
-          const y = ((i * 53) % 430) - 215;
-          const r = (i % 3) + 0.4;
-          return (
-            <circle
-              key={`star-${i}`}
-              cx={x}
-              cy={y}
-              r={r}
-              fill="rgba(255,255,255,0.18)"
-            />
-          );
-        })}
+        <foreignObject x={SVG_WIDTH / 2} y="0" width={SVG_WIDTH / 2} height={SVG_HEIGHT}>
+          <div style={{ width: "100%", height: "100%", background: getFactionGlow("right") }} />
+        </foreignObject>
 
-        <path
-          d="M -255 0
-             C -255 -126, -120 -164, 0 0
-             C 120 164, 255 126, 255 0
-             C 255 -126, 120 -164, 0 0
-             C -120 164, -255 126, -255 0 Z"
-          fill="none"
-          stroke="rgba(255,255,255,0.09)"
-          strokeWidth="18"
-          filter="url(#ringGlow)"
-        />
-
-        <path
-          d="M -255 0
-             C -255 -126, -120 -164, 0 0
-             C 120 164, 255 126, 255 0
-             C 255 -126, 120 -164, 0 0
-             C -120 164, -255 126, -255 0 Z"
-          fill="none"
-          stroke="rgba(244,197,66,0.28)"
-          strokeWidth="4"
-        />
+        <path d={infinityPath} fill="none" stroke="rgba(255,215,130,0.16)" strokeWidth="26" filter="url(#softGlow)" />
+        <path d={infinityPath} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
 
         <rect
-          x={-12}
-          y={-118}
-          width={24}
-          height={236}
-          rx={8}
-          fill="rgba(244,197,66,0.22)"
+          x={CENTER_X - 8}
+          y={CENTER_Y - 140}
+          width={16}
+          height={280}
+          rx={6}
+          fill="rgba(255,215,130,0.32)"
           filter="url(#nexusGlow)"
         />
         <rect
-          x={-118}
-          y={-12}
-          width={236}
-          height={24}
-          rx={8}
-          fill="rgba(167,139,250,0.18)"
+          x={CENTER_X - 140}
+          y={CENTER_Y - 8}
+          width={280}
+          height={16}
+          rx={6}
+          fill="rgba(255,215,130,0.28)"
           filter="url(#nexusGlow)"
         />
-
-        <g>
-          <polygon
-            points="-118,-18 -102,8 -134,8"
-            fill="rgba(244,197,66,0.85)"
-            opacity="0.85"
-          />
-          <polygon
-            points="118,-18 134,8 102,8"
-            fill="rgba(192,199,209,0.85)"
-            opacity="0.85"
-          />
-        </g>
 
         {plots.map((plot) => {
           const selected = selectedPlot?.id === plot.id;
-          const hovered = hoveredPlot?.id === plot.id;
-          const visible =
-            activeFilter === "all" || plot.status === activeFilter;
-
-          if (!visible) return null;
-
-          const displaySize = getPlotDisplaySize(plot);
-          const x = plot.x - displaySize / 2;
-          const y = plot.y - displaySize / 2;
-          const factionStroke = getFactionStroke(plot.faction);
-          const laneWeight = getLaneWeight(plot.distanceToNexus);
-          const gradientId = `grad-${plot.id}`;
+          const fill = getPlotFill(plot, heatmapMode);
+          const stroke = getFactionStroke(plot.faction);
+          const opacity = getStatusOpacity(plot.status);
 
           return (
             <g
               key={plot.id}
-              onMouseEnter={() => setHoveredPlot(plot)}
-              onMouseLeave={() => setHoveredPlot((current) => (current?.id === plot.id ? null : current))}
               onClick={() => onSelectPlot(plot)}
               style={{ cursor: "pointer" }}
             >
               <rect
-                x={x - 2}
-                y={y - 2}
-                width={displaySize + 4}
-                height={displaySize + 4}
-                rx={plot.kind === "community" ? 8 : 4}
-                ry={plot.kind === "community" ? 8 : 4}
-                fill="none"
-                stroke={`rgba(255,255,255,${0.06 + laneWeight * 0.22})`}
-                strokeWidth={plot.kind === "community" ? 2.2 : 1.1}
+                x={plot.x - plot.width / 2}
+                y={plot.y - plot.height / 2}
+                width={selected ? plot.width * 1.12 : plot.width}
+                height={selected ? plot.height * 1.12 : plot.height}
+                rx={plot.plotKind === "personal-5x5" ? 4 : 8}
+                ry={plot.plotKind === "personal-5x5" ? 4 : 8}
+                fill={fill}
+                stroke={selected ? "#ffffff" : stroke}
+                strokeWidth={selected ? 3 : 1.4}
+                opacity={opacity}
+                filter={plot.plotKind !== "personal-5x5" ? "url(#softGlow)" : undefined}
               />
 
               <rect
-                x={x}
-                y={y}
-                width={displaySize}
-                height={displaySize}
-                rx={plot.kind === "community" ? 8 : 4}
-                ry={plot.kind === "community" ? 8 : 4}
-                fill={`url(#${gradientId})`}
-                stroke={selected ? "#ffffff" : factionStroke}
-                strokeWidth={selected ? 3 : plot.kind === "community" ? 2.2 : 1.2}
-                opacity={plot.status === "locked" ? 0.36 : 0.96}
-                transform={
-                  hovered && !selected
-                    ? `translate(${plot.x}, ${plot.y}) scale(1.07) translate(${-plot.x}, ${-plot.y})`
-                    : undefined
-                }
+                x={plot.x - plot.width / 2 - 3}
+                y={plot.y - plot.height / 2 - 3}
+                width={plot.width + 6}
+                height={plot.height + 6}
+                rx={plot.plotKind === "personal-5x5" ? 6 : 10}
+                ry={plot.plotKind === "personal-5x5" ? 6 : 10}
+                fill="none"
+                stroke="rgba(255,255,255,0.08)"
+                strokeWidth={plot.lane * 0.35}
+                opacity={0.4}
               />
-
-              {(plot.status === "owned" || plot.kind === "community") && (
-                <rect
-                  x={plot.x - 3}
-                  y={plot.y - 3}
-                  width={6}
-                  height={6}
-                  rx={2}
-                  ry={2}
-                  fill={getStatusBadgeColor(plot.status)}
-                />
-              )}
 
               {showLabels && (
                 <text
                   x={plot.x}
-                  y={plot.y - displaySize * 0.8}
+                  y={plot.y + 4}
                   textAnchor="middle"
-                  fontSize={plot.kind === "community" ? 11 : 8}
-                  fill="rgba(255,255,255,0.8)"
+                  fontSize={plot.plotKind === "personal-5x5" ? "7" : "10"}
+                  fill="rgba(255,255,255,0.9)"
+                  style={{ pointerEvents: "none", userSelect: "none" }}
                 >
                   {plot.label}
                 </text>
@@ -253,51 +163,14 @@ export default function InfinityMap({
             </g>
           );
         })}
+
+        <text x={CENTER_X - 260} y={CENTER_Y} fill="rgba(255,220,150,0.7)" fontSize="18">
+          INPINITY
+        </text>
+        <text x={CENTER_X + 165} y={CENTER_Y} fill="rgba(180,200,255,0.7)" fontSize="18">
+          INPHINITY
+        </text>
       </svg>
-
-      <div
-        style={{
-          position: "absolute",
-          right: 16,
-          top: 16,
-          padding: "10px 12px",
-          borderRadius: 14,
-          background: "rgba(15,23,42,0.78)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          fontSize: 12,
-          lineHeight: 1.5,
-        }}
-      >
-        <div><strong>Legende</strong></div>
-        <div>Gold = Inpinity</div>
-        <div>Silber = Inphinity</div>
-        <div>Große Felder = 25×25 Community</div>
-        <div>Kleine Felder = 5×5 Personal</div>
-      </div>
-
-      {hoveredPlot && (
-        <div
-          style={{
-            position: "absolute",
-            left: 16,
-            bottom: 16,
-            minWidth: 220,
-            padding: "12px 14px",
-            borderRadius: 14,
-            background: "rgba(15,23,42,0.86)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            boxShadow: "0 14px 34px rgba(0,0,0,0.35)",
-            pointerEvents: "none",
-          }}
-        >
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>{hoveredPlot.label}</div>
-          <div>Status: {hoveredPlot.status}</div>
-          <div>Typ: {hoveredPlot.kind === "community" ? "25×25" : "5×5"}</div>
-          <div>Rarity: {hoveredPlot.rarity}</div>
-          <div>Faction: {hoveredPlot.faction}</div>
-          <div>Lane: {hoveredPlot.lane}</div>
-        </div>
-      )}
     </div>
   );
 }
