@@ -1,10 +1,13 @@
+import type { CSSProperties } from "react";
 import type { InfinityPlot } from "../../types/infinity";
 import type { PlotEligibility, WalletState } from "../../lib/eligibility";
+import type { ResourceEligibility } from "../../lib/resource-check";
 
 type Props = {
   plot: InfinityPlot | null;
   wallet: WalletState;
   eligibility: PlotEligibility;
+  resourceEligibility?: ResourceEligibility | null;
   onConnectWallet: () => void;
 };
 
@@ -20,7 +23,7 @@ function shortAddress(address?: string | null): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-function badgeStyle(kind: "ok" | "bad" | "neutral"): React.CSSProperties {
+function badgeStyle(kind: "ok" | "bad" | "neutral"): CSSProperties {
   if (kind === "ok") {
     return {
       background: "rgba(89,255,43,0.14)",
@@ -60,6 +63,7 @@ export default function MintPreparationPanel({
   plot,
   wallet,
   eligibility,
+  resourceEligibility,
   onConnectWallet,
 }: Props) {
   return (
@@ -83,7 +87,8 @@ export default function MintPreparationPanel({
           }}
         >
           <div>
-            <strong>Wallet:</strong> {wallet.isConnected ? shortAddress(wallet.address) : "Not connected"}
+            <strong>Wallet:</strong>{" "}
+            {wallet.isConnected ? shortAddress(wallet.address) : "Not connected"}
           </div>
           <div>
             <strong>Chain:</strong> {wallet.chainId ?? "—"}
@@ -105,12 +110,67 @@ export default function MintPreparationPanel({
             border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
-          <div><strong>Selected Plot:</strong> {plot?.label || "—"}</div>
-          <div><strong>Kind:</strong> {plot ? pretty(plot.plotKind) : "—"}</div>
-          <div><strong>Status:</strong> {plot ? pretty(plot.status) : "—"}</div>
-          <div><strong>Faction:</strong> {plot ? pretty(plot.faction) : "—"}</div>
-          <div><strong>Tier:</strong> {plot ? pretty(plot.tier) : "—"}</div>
-          <div><strong>Estimated Value:</strong> {plot ? `${plot.valueModel?.finalEstimate || plot.priceEstimate} PIT` : "—"}</div>
+          <div>
+            <strong>Selected Plot:</strong> {plot?.label || "—"}
+          </div>
+          <div>
+            <strong>Kind:</strong> {plot ? pretty(plot.plotKind) : "—"}
+          </div>
+          <div>
+            <strong>Status:</strong> {plot ? pretty(plot.status) : "—"}
+          </div>
+          <div>
+            <strong>Faction:</strong> {plot ? pretty(plot.faction) : "—"}
+          </div>
+          <div>
+            <strong>Tier:</strong> {plot ? pretty(plot.tier) : "—"}
+          </div>
+          <div>
+            <strong>Estimated Value:</strong>{" "}
+            {plot ? `${plot.valueModel?.finalEstimate || plot.priceEstimate} PIT` : "—"}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gap: 8,
+            padding: 12,
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.035)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <strong>Resources</strong>
+
+          <div>
+            Oil:{" "}
+            {resourceEligibility
+              ? `${resourceEligibility.balances.oil.toString()} / ${resourceEligibility.required.oil.toString()}`
+              : "—"}
+          </div>
+
+          <div>
+            Lemons:{" "}
+            {resourceEligibility
+              ? `${resourceEligibility.balances.lemons.toString()} / ${resourceEligibility.required.lemons.toString()}`
+              : "—"}
+          </div>
+
+          <div>
+            Iron:{" "}
+            {resourceEligibility
+              ? `${resourceEligibility.balances.iron.toString()} / ${resourceEligibility.required.iron.toString()}`
+              : "—"}
+          </div>
+
+          {resourceEligibility && !resourceEligibility.ready && (
+            <>
+              <div>Missing Oil: {resourceEligibility.missing.oil.toString()}</div>
+              <div>Missing Lemons: {resourceEligibility.missing.lemons.toString()}</div>
+              <div>Missing Iron: {resourceEligibility.missing.iron.toString()}</div>
+            </>
+          )}
         </div>
 
         <div
@@ -127,10 +187,7 @@ export default function MintPreparationPanel({
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {eligibility.checks.map((check) => (
-              <span
-                key={check.key}
-                style={badgeStyle(check.passed ? "ok" : "bad")}
-              >
+              <span key={check.key} style={badgeStyle(check.passed ? "ok" : "bad")}>
                 {check.passed ? "✓" : "✗"} {check.label}
               </span>
             ))}

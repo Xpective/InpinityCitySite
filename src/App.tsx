@@ -11,6 +11,12 @@ import { CITY_DASHBOARD_QUERY } from "./lib/queries";
 import { generateInfinityPlots } from "./lib/infinity-layout";
 import { hydratePlots } from "./lib/city-map-merge";
 import { getPlotEligibility, type WalletState } from "./lib/eligibility";
+import {
+  evaluateResourceEligibility,
+  readWalletResourceBalances,
+  type ResourceEligibility,
+} from "./lib/resource-check";
+import type { CityConfigSnapshot } from "./lib/city-config";
 
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import ErrorMessage from "./components/common/ErrorMessage";
@@ -122,6 +128,9 @@ export default function App() {
     chainId: null,
   });
 
+  const [cityConfigSnapshot, setCityConfigSnapshot] = useState<CityConfigSnapshot | null>(null);
+  const [resourceEligibility, setResourceEligibility] = useState<ResourceEligibility | null>(null);
+
   const [dashboard, setDashboard] = useState<DashboardQueryResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AppError | null>(null);
@@ -217,6 +226,41 @@ export default function App() {
     syncWalletState();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadResourceState() {
+      if (!wallet.isConnected || !wallet.address) {
+        setCityConfigSnapshot(null);
+        setResourceEligibility(null);
+        return;
+      }
+
+      try {
+        const { snapshot, balances } = await readWalletResourceBalances(wallet.address);
+
+        if (cancelled) return;
+
+        setCityConfigSnapshot(snapshot);
+
+        const evaluated = evaluateResourceEligibility(selectedPlot, balances, snapshot);
+        setResourceEligibility(evaluated);
+      } catch (err) {
+        console.warn("Resource check failed:", err);
+        if (!cancelled) {
+          setCityConfigSnapshot(null);
+          setResourceEligibility(null);
+        }
+      }
+    }
+
+    loadResourceState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [wallet, selectedPlot]);
+
   const handleRetry = (): void => {
     setRetryCount((prev) => prev + 1);
     setError(null);
@@ -290,8 +334,8 @@ export default function App() {
   }, [hydratedPlots, searchTerm, availabilityFilter, specialFilter, favoriteIds]);
 
   const eligibility = useMemo(() => {
-    return getPlotEligibility(selectedPlot, wallet);
-  }, [selectedPlot, wallet]);
+    return getPlotEligibility(selectedPlot, wallet, resourceEligibility);
+  }, [selectedPlot, wallet, resourceEligibility]);
 
   useEffect(() => {
     if (!selectedPlot) return;
@@ -364,7 +408,7 @@ export default function App() {
           </div>
           <div className="card">
             <div className="muted">CityConfig</div>
-            <strong>follows</strong>
+            <strong>{cityConfigSnapshot ? "loaded" : "follows"}</strong>
           </div>
           <div className="card">
             <div className="muted">CityStatus</div>
@@ -493,6 +537,7 @@ export default function App() {
               plot={selectedPlot}
               wallet={wallet}
               eligibility={eligibility}
+              resourceEligibility={resourceEligibility}
               onConnectWallet={handleConnectWallet}
             />
           </div>

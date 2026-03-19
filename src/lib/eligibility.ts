@@ -1,4 +1,5 @@
 import type { InfinityPlot } from "../types/infinity";
+import type { ResourceEligibility } from "./resource-check";
 
 export type WalletState = {
   isConnected: boolean;
@@ -27,7 +28,8 @@ const BASE_CHAIN_ID = 8453;
 
 export function getPlotEligibility(
   plot: InfinityPlot | null,
-  wallet: WalletState
+  wallet: WalletState,
+  resourceEligibility?: ResourceEligibility | null
 ): PlotEligibility {
   if (!plot) {
     return {
@@ -44,6 +46,7 @@ export function getPlotEligibility(
         { key: "plot-selected", label: "Plot selected", passed: false },
         { key: "wallet", label: "Wallet connected", passed: wallet.isConnected },
         { key: "chain", label: "Correct chain (Base)", passed: wallet.chainId === BASE_CHAIN_ID },
+        { key: "resources", label: "Enough resources", passed: false },
       ],
     };
   }
@@ -59,6 +62,7 @@ export function getPlotEligibility(
   const plotKindAllowed = isPersonal && !isCommunity && !isBorderline && !isNexus;
   const statusAllowed = plot.status === "free";
   const factionAllowed = !plot.policy.sharedUse;
+  const resourcesReady = resourceEligibility ? resourceEligibility.ready : false;
 
   const reasons: string[] = [];
 
@@ -90,10 +94,22 @@ export function getPlotEligibility(
     reasons.push("This plot belongs to a shared-use zone and is not available for personal purchase.");
   }
 
-  reasons.push("Resource requirement check is prepared but not activated yet.");
+  if (!resourceEligibility) {
+    reasons.push("Resource requirement check not loaded yet.");
+  } else if (!resourcesReady) {
+    reasons.push("Not enough farming resources for this Qubiq yet.");
+  }
+
   reasons.push("Mint is visible for preview only and remains disabled in this phase.");
 
-  const reservable = walletConnected && correctChain && plotKindAllowed && statusAllowed && factionAllowed;
+  const reservable =
+    walletConnected &&
+    correctChain &&
+    plotKindAllowed &&
+    statusAllowed &&
+    factionAllowed &&
+    resourcesReady;
+
   const purchasable = false;
 
   return {
@@ -113,7 +129,7 @@ export function getPlotEligibility(
       { key: "personal", label: "Personal 5x5 plot", passed: plotKindAllowed },
       { key: "free", label: "Plot is free", passed: statusAllowed },
       { key: "not-shared", label: "Not a shared-use zone", passed: factionAllowed },
-      { key: "resources", label: "Resource check ready", passed: false },
+      { key: "resources", label: "Enough resources", passed: resourcesReady },
       { key: "mint-live", label: "Mint live", passed: false },
     ],
   };
