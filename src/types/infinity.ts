@@ -30,6 +30,66 @@ export type InfinityPlotKind =
   | "borderline-25x25"
   | "nexus";
 
+export type InfinityPlotTier =
+  | "outer"
+  | "mid"
+  | "inner"
+  | "nexus";
+
+export type InfinityPlotPolicy = {
+  isPersonal: boolean;
+  isCommunity: boolean;
+  isBorderline: boolean;
+  isNexus: boolean;
+  reservable: boolean;
+  purchasable: boolean;
+  factionLocked: boolean;
+  sharedUse: boolean;
+};
+
+export type InfinityPlotProvenance = {
+  firstBuilder?: string;
+  createdAt?: number;
+  layerCount: number;
+  ownershipTransfers: number;
+  aetherUses: number;
+  historicScore: number;
+  originFaction: string;
+  genesisEra?: string;
+  lastUpdated?: number;
+
+  // Vorbereitete abgeleitete Werte
+  legacyScore: number;
+  provenanceScore: number;
+  ageInDays?: number;
+  isHistoricCore: boolean;
+};
+
+export type InfinityPlotStatusInfo = {
+  lastActivityAt?: number;
+  lastMaintenanceAt?: number;
+  manualStatusOverride?: string;
+  derivedStatus?: string;
+  layerEligible: boolean;
+  updatedAt?: number;
+
+  // Vorbereitete abgeleitete Werte
+  inactivityDays?: number;
+  maintenanceAgeDays?: number;
+  inactivityLevel: "fresh" | "watch" | "warning" | "critical";
+  maintenanceLevel: "maintained" | "due" | "overdue";
+  canLayerUpgrade: boolean;
+};
+
+export type InfinityPlotValueModel = {
+  baseValue: number;
+  rarityMultiplier: number;
+  laneMultiplier: number;
+  nexusMultiplier: number;
+  historicalMultiplier: number;
+  finalEstimate: number;
+};
+
 export type InfinityPlot = {
   id: string;
   index: number;
@@ -50,28 +110,17 @@ export type InfinityPlot = {
   lastTransferDaysAgo?: number;
   isFavorite?: boolean;
 
-  // Optionale Felder aus Subgraph (für mergeMapData)
+  // Layout / Klassifikation
+  tier: InfinityPlotTier;
+  policy: InfinityPlotPolicy;
+
+  // Overlay-Felder aus Subgraph / Merge
   plotId?: string;
   owner?: string;
   createdAt?: number;
   exists?: boolean;
-  provenance?: {
-    firstBuilder?: string;
-    createdAt?: number;
-    layerCount: number;
-    ownershipTransfers: number;
-    aetherUses: number;
-    historicScore: number;
-    originFaction: string;
-    genesisEra: boolean;
-    lastUpdated?: number;
-  };
-  statusInfo?: {
-    lastActivityAt?: number;
-    lastMaintenanceAt?: number;
-    manualStatusOverride?: string;
-    derivedStatus: string;
-    layerEligible: boolean;
-    updatedAt?: number;
-  };
+
+  provenance?: InfinityPlotProvenance;
+  statusInfo?: InfinityPlotStatusInfo;
+  valueModel?: InfinityPlotValueModel;
 };

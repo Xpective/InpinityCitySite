@@ -1,4 +1,12 @@
-import type { InfinityFaction, InfinityPlot, InfinityRarity, InfinityPlotStatus } from "../types/infinity";
+import type {
+  InfinityFaction,
+  InfinityPlot,
+  InfinityPlotKind,
+  InfinityPlotPolicy,
+  InfinityRarity,
+  InfinityPlotStatus,
+  InfinityPlotTier,
+} from "../types/infinity";
 
 export const SVG_WIDTH = 1400;
 export const SVG_HEIGHT = 900;
@@ -11,6 +19,34 @@ const MID_COMMUNITY_SIZE = 42;
 const BORDERLINE_SIZE = 34;
 const NEUTRAL_SIZE = 34;
 
+function getTier(distanceToNexus: number, plotKind: InfinityPlotKind): InfinityPlotTier {
+  if (plotKind === "nexus") return "nexus";
+  if (distanceToNexus <= 120) return "inner";
+  if (distanceToNexus <= 260) return "mid";
+  return "outer";
+}
+
+function buildPolicy(
+  plotKind: InfinityPlotKind,
+  faction: InfinityFaction
+): InfinityPlotPolicy {
+  const isPersonal = plotKind === "personal-5x5";
+  const isCommunity = plotKind === "community-25x25";
+  const isBorderline = plotKind === "borderline-25x25";
+  const isNexus = plotKind === "nexus";
+
+  return {
+    isPersonal,
+    isCommunity,
+    isBorderline,
+    isNexus,
+    reservable: isPersonal,
+    purchasable: isPersonal,
+    factionLocked: isPersonal && (faction === "inpinity" || faction === "inphinity"),
+    sharedUse: isCommunity || isBorderline || isNexus,
+  };
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -22,7 +58,8 @@ function distance(ax: number, ay: number, bx: number, by: number): number {
 function getLemniscatePoint(t: number) {
   const scale = 330;
   const x = (scale * Math.cos(t)) / (1 + Math.sin(t) * Math.sin(t));
-  const y = (scale * Math.sin(t) * Math.cos(t)) / (1 + Math.sin(t) * Math.sin(t)) * 0.8;
+  const y =
+    ((scale * Math.sin(t) * Math.cos(t)) / (1 + Math.sin(t) * Math.sin(t))) * 0.8;
   return { x: CENTER_X + x, y: CENTER_Y + y };
 }
 
@@ -73,7 +110,9 @@ export function getLaneWeight(lane: number): number {
   return Number((1 + lane * 0.35).toFixed(2));
 }
 
-export function estimatePlotPrice(plot: Pick<InfinityPlot, "rarity" | "lane" | "distanceToNexus" | "plotKind">): number {
+export function estimatePlotPrice(
+  plot: Pick<InfinityPlot, "rarity" | "lane" | "distanceToNexus" | "plotKind">
+): number {
   let base = 120;
 
   if (plot.plotKind === "community-25x25") base = 2500;
@@ -133,9 +172,10 @@ function buildPersonalPlots(): InfinityPlot[] {
 
     const distanceToNexus = distance(x, y, CENTER_X, CENTER_Y);
     const rarity = getRarityByDistance(distanceToNexus);
-    const faction = side === "left" ? "inpinity" : "inphinity";
+    const faction: InfinityFaction = side === "left" ? "inpinity" : "inphinity";
     const lane = Math.max(1, Math.round((1 - clamp(distanceToNexus / 360, 0, 1)) * 6));
     const status = getStatusByIndex(i);
+    const plotKind: InfinityPlotKind = "personal-5x5";
 
     created += 1;
 
@@ -153,9 +193,14 @@ function buildPersonalPlots(): InfinityPlot[] {
       faction,
       status,
       label: `Q${created}`,
-      plotKind: "personal-5x5",
+      plotKind,
+      tier: getTier(distanceToNexus, plotKind),
+      policy: buildPolicy(plotKind, faction),
       priceEstimate: 0,
-      ownerLabel: status === "owned" ? `0x${(1200 + created).toString(16)}...${(8800 + created).toString(16)}` : undefined,
+      ownerLabel:
+        status === "owned"
+          ? `0x${(1200 + created).toString(16)}...${(8800 + created).toString(16)}`
+          : undefined,
       lastTransferDaysAgo: status === "owned" ? (created % 90) + 3 : undefined,
     };
 
@@ -167,8 +212,9 @@ function buildPersonalPlots(): InfinityPlot[] {
 }
 
 function buildCenterPlots(): InfinityPlot[] {
-  const raw: Omit<InfinityPlot, "priceEstimate">[] = [
-    // BORDERLINE (grün) vertikal
+  type CenterBasePlot = Omit<InfinityPlot, "priceEstimate" | "tier" | "policy">;
+
+  const raw: CenterBasePlot[] = [
     {
       id: "borderline-1",
       index: 10101,
@@ -298,7 +344,6 @@ function buildCenterPlots(): InfinityPlot[] {
       plotKind: "borderline-25x25",
     },
 
-    // NEUTRAL (blau) am Kreuz
     {
       id: "neutral-1",
       index: 10201,
@@ -380,7 +425,6 @@ function buildCenterPlots(): InfinityPlot[] {
       plotKind: "nexus",
     },
 
-    // COMMUNITY links / Inpinity
     {
       id: "community-left-top",
       index: 10301,
@@ -446,7 +490,6 @@ function buildCenterPlots(): InfinityPlot[] {
       plotKind: "community-25x25",
     },
 
-    // COMMUNITY rechts / Inphinity
     {
       id: "community-right-top",
       index: 10305,
@@ -512,7 +555,6 @@ function buildCenterPlots(): InfinityPlot[] {
       plotKind: "community-25x25",
     },
 
-    // 4 weitere mittlere Community plots
     {
       id: "community-mid-1",
       index: 10309,
@@ -581,6 +623,8 @@ function buildCenterPlots(): InfinityPlot[] {
 
   return raw.map((plot) => ({
     ...plot,
+    tier: getTier(plot.distanceToNexus, plot.plotKind),
+    policy: buildPolicy(plot.plotKind, plot.faction),
     priceEstimate: estimatePlotPrice(plot),
     ownerLabel: plot.status === "community" ? "Collective Reserve" : undefined,
     lastTransferDaysAgo: plot.status === "community" ? 0 : undefined,

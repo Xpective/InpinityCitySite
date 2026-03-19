@@ -2,23 +2,38 @@ import { useEffect, useMemo, useState } from "react";
 import CityStats from "./components/city/CityStats";
 import CityToolbar from "./components/city/CityToolbar";
 import PlotDetails from "./components/city/PlotDetails";
+import InfinityMap from "./components/city/InfinityMap";
+
 import { getFavoritePlotIds, toggleFavoritePlot } from "./lib/favorites";
 import { requestGraphQL } from "./lib/graphql";
 import { CITY_DASHBOARD_QUERY } from "./lib/queries";
+import { generateInfinityPlots } from "./lib/infinity-layout";
+import { hydratePlots } from "./lib/city-map-merge";
 
-// NEUE IMPORTS
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import ErrorMessage from "./components/common/ErrorMessage";
 import LoadingSpinner from "./components/common/LoadingSpinner";
-import PaginatedPlotList from "./components/city/PaginatedPlotList";
 import { parseError, retry, type AppError } from "./lib/errorHandling";
+
+import type { DashboardQueryResult } from "./types/city";
+import type { InfinityPlot } from "./types/infinity";
 
 import "./styles/global.css";
 
-// GENERIERTE TYPEN
-import type { CityDashboardQuery } from "./types/generated/graphql";
-import type { InfinityPlot } from "./types/infinity";
-import { generateInfinityPlots } from "./lib/infinity-layout";
+type AvailabilityFilter = "all" | "free" | "reserved" | "owned" | "locked";
+type SpecialFilter =
+  | "all"
+  | "favorites"
+  | "historic-core"
+  | "maintenance-overdue"
+  | "layer-eligible"
+  | "borderline-only"
+  | "community-only"
+  | "nexus-only";
+
+function normalize(value: string): string {
+  return value.trim().toLowerCase();
+}
 
 function downloadMapPng(): void {
   const svg = document.querySelector("#city-map-capture svg") as SVGElement | null;
@@ -37,15 +52,69 @@ function downloadMapPng(): void {
   URL.revokeObjectURL(url);
 }
 
+function matchesSearch(plot: InfinityPlot, term: string): boolean {
+  if (!term) return true;
+
+  const label = normalize(plot.label);
+  const plotId = normalize(plot.plotId || "");
+  const owner = normalize(plot.owner || "");
+  const ownerLabel = normalize(plot.ownerLabel || "");
+
+  return (
+    label.includes(term) ||
+    plotId.includes(term) ||
+    owner.includes(term) ||
+    ownerLabel.includes(term)
+  );
+}
+
+function matchesAvailability(plot: InfinityPlot, filter: AvailabilityFilter): boolean {
+  if (filter === "all") return true;
+  return plot.status === filter;
+}
+
+function matchesSpecial(
+  plot: InfinityPlot,
+  filter: SpecialFilter,
+  favoriteIds: string[]
+): boolean {
+  switch (filter) {
+    case "all":
+      return true;
+    case "favorites":
+      return favoriteIds.includes(plot.id);
+    case "historic-core":
+      return !!plot.provenance?.isHistoricCore;
+    case "maintenance-overdue":
+      return plot.statusInfo?.maintenanceLevel === "overdue";
+    case "layer-eligible":
+      return !!plot.statusInfo?.layerEligible;
+    case "borderline-only":
+      return plot.policy.isBorderline;
+    case "community-only":
+      return plot.policy.isCommunity;
+    case "nexus-only":
+      return plot.policy.isNexus;
+    default:
+      return true;
+  }
+}
+
 export default function App() {
-  const [search, setSearch] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [jumpTarget, setJumpTarget] = useState("");
   const [showLabels, setShowLabels] = useState(true);
   const [heatmapMode, setHeatmapMode] = useState(false);
-  const [onlyFavorites, setOnlyFavorites] = useState(false);
+
+  const [availabilityFilter, setAvailabilityFilter] =
+    useState<AvailabilityFilter>("all");
+  const [specialFilter, setSpecialFilter] =
+    useState<SpecialFilter>("all");
+
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selectedPlot, setSelectedPlot] = useState<InfinityPlot | null>(null);
 
-  const [dashboard, setDashboard] = useState<CityDashboardQuery | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardQueryResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AppError | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -56,7 +125,6 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    let mounted = true;
 
     async function loadDashboard() {
       try {
@@ -65,7 +133,7 @@ export default function App() {
 
         const data = await retry(
           async () => {
-            return await requestGraphQL<CityDashboardQuery>(CITY_DASHBOARD_QUERY);
+            return await requestGraphQL<DashboardQueryResult>(CITY_DASHBOARD_QUERY);
           },
           {
             maxRetries: 3,
@@ -73,20 +141,20 @@ export default function App() {
           }
         );
 
-        if (!cancelled && mounted) {
+        if (!cancelled) {
           setDashboard(data);
         }
       } catch (err) {
-        if (!cancelled && mounted) {
-          const appError = parseError(err, { 
-            query: 'CITY_DASHBOARD_QUERY',
+        if (!cancelled) {
+          const appError = parseError(err, {
+            query: "CITY_DASHBOARD_QUERY",
             retryCount,
           });
           setError(appError);
-          console.error('Dashboard Fehler:', appError);
+          console.error("Dashboard Fehler:", appError);
         }
       } finally {
-        if (!cancelled && mounted) {
+        if (!cancelled) {
           setLoading(false);
         }
       }
@@ -96,17 +164,17 @@ export default function App() {
 
     return () => {
       cancelled = true;
-      mounted = false;
     };
   }, [retryCount]);
 
-  const handleRetry = () => {
-    setRetryCount(prev => prev + 1);
+  const handleRetry = (): void => {
+    setRetryCount((prev) => prev + 1);
     setError(null);
   };
 
   const dashboardCounts = useMemo(() => {
     if (!dashboard) return null;
+
     return {
       indexerBlock: dashboard._meta?.block?.number || 0,
       weaponDefinitions: dashboard.weaponDefinitions?.length || 0,
@@ -114,6 +182,8 @@ export default function App() {
       materiaDefinitions: dashboard.materiaDefinitions?.length || 0,
       plots: dashboard.plots?.length || 0,
       players: dashboard.players?.length || 0,
+      plotStatusInfos: dashboard.plotStatusInfos?.length || 0,
+      plotProvenances: dashboard.plotProvenances?.length || 0,
     };
   }, [dashboard]);
 
@@ -121,25 +191,62 @@ export default function App() {
     return generateInfinityPlots();
   }, []);
 
-  function handleJump(): void {
-    const term = search.trim().toLowerCase();
-    if (!term) return;
+  const hydratedPlots = useMemo(() => {
+    return hydratePlots(basePlots, dashboard || {});
+  }, [basePlots, dashboard]);
 
-    alert('Die Suche wird in der paginierten Version bald verfügbar sein!');
-  }
+  const filteredPlots = useMemo(() => {
+    const term = normalize(searchTerm);
 
-  function handleToggleFavorite(id: string): void {
-    setFavoriteIds(toggleFavoritePlot(id));
-  }
+    return hydratedPlots.filter((plot) => {
+      if (!matchesSearch(plot, term)) return false;
+      if (!matchesAvailability(plot, availabilityFilter)) return false;
+      if (!matchesSpecial(plot, specialFilter, favoriteIds)) return false;
+      return true;
+    });
+  }, [hydratedPlots, searchTerm, availabilityFilter, specialFilter, favoriteIds]);
 
   useEffect(() => {
-    function onKeyDown(_e: KeyboardEvent) {
-      // Keyboard-Navigation vorerst deaktiviert
-    }
+    if (!selectedPlot) return;
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+    const refreshed = hydratedPlots.find((plot) => plot.id === selectedPlot.id);
+    if (refreshed && refreshed !== selectedPlot) {
+      setSelectedPlot(refreshed);
+    }
+  }, [hydratedPlots, selectedPlot]);
+
+  function handleToggleFavorite(id: string): void {
+    const next = toggleFavoritePlot(id);
+    setFavoriteIds(next);
+  }
+
+  function handleJumpToPlot(rawValue: string): void {
+    const term = normalize(rawValue);
+    if (!term) return;
+
+    const found = hydratedPlots.find((plot) => {
+      const label = normalize(plot.label);
+      const plotId = normalize(plot.plotId || "");
+      const owner = normalize(plot.owner || "");
+      const ownerLabel = normalize(plot.ownerLabel || "");
+
+      return (
+        label === term ||
+        plotId === term ||
+        owner === term ||
+        ownerLabel === term ||
+        label.includes(term) ||
+        plotId.includes(term) ||
+        owner.includes(term) ||
+        ownerLabel.includes(term)
+      );
+    });
+
+    if (found) {
+      setSelectedPlot(found);
+      setSearchTerm(found.label);
+    }
+  }
 
   return (
     <div className="page">
@@ -183,18 +290,14 @@ export default function App() {
         <h2>City Dashboard</h2>
 
         <ErrorBoundary
-          onError={(error) => console.error('Dashboard ErrorBoundary:', error)}
+          onError={(caughtError) => console.error("Dashboard ErrorBoundary:", caughtError)}
           resetKeys={[dashboard]}
         >
-          {loading && (
-            <>
-              <LoadingSpinner text="Lade Stadt-Daten..." />
-            </>
-          )}
+          {loading && <LoadingSpinner text="Loading city data..." />}
 
           {!loading && error && (
-            <ErrorMessage 
-              error={error} 
+            <ErrorMessage
+              error={error}
               onRetry={handleRetry}
               variant="card"
               showDetails={import.meta.env.DEV}
@@ -227,6 +330,14 @@ export default function App() {
                 <div className="muted">Players</div>
                 <strong>{dashboardCounts.players}</strong>
               </div>
+              <div className="card">
+                <div className="muted">Status Infos</div>
+                <strong>{dashboardCounts.plotStatusInfos}</strong>
+              </div>
+              <div className="card">
+                <div className="muted">Provenances</div>
+                <strong>{dashboardCounts.plotProvenances}</strong>
+              </div>
             </div>
           )}
         </ErrorBoundary>
@@ -236,16 +347,21 @@ export default function App() {
         <h2>Infinity City Map</h2>
 
         <CityToolbar
-          search={search}
-          onSearchChange={setSearch}
-          onJump={handleJump}
+          plots={hydratedPlots}
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          jumpTarget={jumpTarget}
+          onJumpTargetChange={setJumpTarget}
+          onJumpToPlot={handleJumpToPlot}
           showLabels={showLabels}
           onToggleLabels={() => setShowLabels((v) => !v)}
           heatmapMode={heatmapMode}
           onToggleHeatmap={() => setHeatmapMode((v) => !v)}
-          onlyFavorites={onlyFavorites}
-          onToggleFavoritesOnly={() => setOnlyFavorites((v) => !v)}
-          onScreenshot={downloadMapPng}
+          availabilityFilter={availabilityFilter}
+          onAvailabilityFilterChange={setAvailabilityFilter}
+          specialFilter={specialFilter}
+          onSpecialFilterChange={setSpecialFilter}
+          onExportPng={downloadMapPng}
         />
 
         <div
@@ -257,24 +373,27 @@ export default function App() {
           }}
         >
           <div>
-            <div id="city-map-capture">
-              <ErrorBoundary
-                onError={(error) => console.error('Map ErrorBoundary:', error)}
-                resetKeys={[onlyFavorites, favoriteIds]}
-              >
-                <PaginatedPlotList
-                  selectedPlot={selectedPlot}
-                  onSelectPlot={setSelectedPlot}
-                  showLabels={showLabels}
-                  heatmapMode={heatmapMode}
-                  onlyFavorites={onlyFavorites}
-                  favoriteIds={favoriteIds}
-                  pageSize={50}
-                />
-              </ErrorBoundary>
-            </div>
+            <ErrorBoundary
+              onError={(caughtError) => console.error("Map ErrorBoundary:", caughtError)}
+              resetKeys={[
+                filteredPlots.length,
+                showLabels,
+                heatmapMode,
+                availabilityFilter,
+                specialFilter,
+                favoriteIds.join(","),
+              ]}
+            >
+              <InfinityMap
+                plots={filteredPlots}
+                selectedPlot={selectedPlot}
+                onSelectPlot={setSelectedPlot}
+                showLabels={showLabels}
+                heatmapMode={heatmapMode}
+              />
+            </ErrorBoundary>
 
-            <CityStats plots={basePlots} />
+            <CityStats plots={filteredPlots} />
           </div>
 
           <PlotDetails
@@ -287,13 +406,13 @@ export default function App() {
       <section className="panel">
         <h2>Marriage phase: mock layout + live subgraph</h2>
         <p>
-          The ∞ layout stays visual-first. Real subgraph data is now prepared to
-          bind players, plots, ownership and plot history onto the existing city map
-          without enabling wallet connection or buying yet.
+          The ∞ layout stays visual-first. Real subgraph data is now bound onto the
+          city vision through the merge layer, without enabling wallet connection or
+          buying yet.
         </p>
         <p style={{ marginBottom: 0 }}>
-          Next step: bind real plot IDs to the exact left/right/borderline/community
-          buckets and then overlay live ownership, status and history on top.
+          Next step: refine exact plot-to-layout assignment, then expose stronger
+          ownership, inactivity, maintenance and provenance overlays.
         </p>
       </section>
     </div>

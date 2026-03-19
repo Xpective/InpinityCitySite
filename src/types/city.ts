@@ -1,4 +1,3 @@
-
 export type WeaponDefinition = {
   id: string;
   weaponDefinitionId: string;
@@ -13,6 +12,11 @@ export type WeaponDefinition = {
   enabled: boolean;
 };
 
+export type WeaponInstanceDefinitionRef = {
+  id: string;
+  name: string;
+};
+
 export type WeaponInstance = {
   id: string;
   tokenId: string;
@@ -21,10 +25,7 @@ export type WeaponInstance = {
   upgradeLevel: string;
   durability: string;
   originPlotId: string;
-  weaponDefinition?: {
-    id: string;
-    name: string;
-  } | null;
+  weaponDefinition?: WeaponInstanceDefinitionRef | null;
 };
 
 export type MateriaDefinition = {
@@ -38,6 +39,10 @@ export type MateriaDefinition = {
   enabled: boolean;
 };
 
+export type PlotOwnerRef = {
+  id: string;
+};
+
 export type Plot = {
   id: string;
   plotId: string;
@@ -48,9 +53,7 @@ export type Plot = {
   height: string;
   exists: boolean;
   createdAt: string;
-  owner?: {
-    id: string;
-  } | null;
+  owner?: PlotOwnerRef | null;
 };
 
 export type Player = {
@@ -61,12 +64,14 @@ export type Player = {
   craftedWeapons?: string | null;
 };
 
+export type PlotRef = {
+  id: string;
+  plotId: string;
+};
+
 export type PlotStatusInfo = {
   id: string;
-  plot?: {
-    id: string;
-    plotId: string;
-  } | null;
+  plot?: PlotRef | null;
   lastActivityAt?: string | null;
   lastMaintenanceAt?: string | null;
   manualStatusOverride?: string | null;
@@ -78,10 +83,7 @@ export type PlotStatusInfo = {
 
 export type PlotProvenance = {
   id: string;
-  plot?: {
-    id: string;
-    plotId: string;
-  } | null;
+  plot?: PlotRef | null;
   firstBuilder?: string | null;
   createdAt?: string | null;
   layerCount?: string | null;
@@ -94,12 +96,14 @@ export type PlotProvenance = {
   updatedAtTimestamp?: string | null;
 };
 
-export type DashboardQueryResult = {
-  _meta: {
-    block: {
-      number: number;
-    };
+export type DashboardMeta = {
+  block: {
+    number: number;
   };
+};
+
+export type DashboardQueryResult = {
+  _meta: DashboardMeta;
   weaponDefinitions: WeaponDefinition[];
   weaponInstances: WeaponInstance[];
   materiaDefinitions: MateriaDefinition[];

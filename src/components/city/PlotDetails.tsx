@@ -13,6 +13,163 @@ function pretty(value: string): string {
     .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
+function yesNo(value: boolean): string {
+  return value ? "Yes" : "No";
+}
+
+function formatUnix(value?: number): string {
+  if (!value) return "—";
+  const date = new Date(value * 1000);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-GB");
+}
+
+function badgeStyle(
+  tone: "gold" | "blue" | "green" | "red" | "gray" | "violet"
+): React.CSSProperties {
+  const map = {
+    gold: {
+      background: "rgba(245, 196, 110, 0.18)",
+      border: "1px solid rgba(245, 196, 110, 0.45)",
+      color: "#f5c46e",
+    },
+    blue: {
+      background: "rgba(90, 140, 255, 0.16)",
+      border: "1px solid rgba(90, 140, 255, 0.4)",
+      color: "#9bb7ff",
+    },
+    green: {
+      background: "rgba(89, 255, 43, 0.14)",
+      border: "1px solid rgba(89, 255, 43, 0.38)",
+      color: "#8cff73",
+    },
+    red: {
+      background: "rgba(255, 90, 90, 0.14)",
+      border: "1px solid rgba(255, 90, 90, 0.38)",
+      color: "#ff9d9d",
+    },
+    gray: {
+      background: "rgba(255,255,255,0.08)",
+      border: "1px solid rgba(255,255,255,0.14)",
+      color: "#d7dbe3",
+    },
+    violet: {
+      background: "rgba(155,124,255,0.16)",
+      border: "1px solid rgba(155,124,255,0.38)",
+      color: "#c8b4ff",
+    },
+  };
+
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "6px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 600,
+    ...map[tone],
+  };
+}
+
+function sectionTitleStyle(): React.CSSProperties {
+  return {
+    marginTop: 0,
+    marginBottom: 10,
+    fontSize: 15,
+    fontWeight: 700,
+  };
+}
+
+function cardBlockStyle(): React.CSSProperties {
+  return {
+    display: "grid",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    background: "rgba(255,255,255,0.035)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  };
+}
+
+function getOpportunitySignals(plot: InfinityPlot): Array<{
+  label: string;
+  tone: "gold" | "blue" | "green" | "red" | "gray" | "violet";
+}> {
+  const signals: Array<{
+    label: string;
+    tone: "gold" | "blue" | "green" | "red" | "gray" | "violet";
+  }> = [];
+
+  if (plot.tier === "nexus" || plot.distanceToNexus < 90) {
+    signals.push({ label: "Prime Nexus Proximity", tone: "gold" });
+  }
+
+  if ((plot.provenance?.legacyScore || 0) >= 140) {
+    signals.push({ label: "High Legacy Value", tone: "violet" });
+  }
+
+  if ((plot.provenance?.provenanceScore || 0) >= 180) {
+    signals.push({ label: "Strong Provenance", tone: "blue" });
+  }
+
+  if (plot.statusInfo?.canLayerUpgrade) {
+    signals.push({ label: "Layer Upgrade Possible", tone: "green" });
+  }
+
+  if (plot.statusInfo?.maintenanceLevel === "overdue") {
+    signals.push({ label: "Maintenance Overdue", tone: "red" });
+  }
+
+  if (plot.statusInfo?.inactivityLevel === "critical") {
+    signals.push({ label: "Critical Inactivity", tone: "red" });
+  }
+
+  if (plot.policy.sharedUse) {
+    signals.push({ label: "Shared Governance Zone", tone: "blue" });
+  }
+
+  if (plot.policy.factionLocked) {
+    signals.push({ label: "Faction Restricted", tone: "gray" });
+  }
+
+  if (!signals.length) {
+    signals.push({ label: "Stable Standard Plot", tone: "gray" });
+  }
+
+  return signals;
+}
+
+function getRightsSummary(plot: InfinityPlot): string[] {
+  const lines: string[] = [];
+
+  if (plot.policy.isPersonal) {
+    lines.push("Private personal plot in the ∞ city structure.");
+  }
+  if (plot.policy.isCommunity) {
+    lines.push("Reserved for shared community infrastructure and later governance use.");
+  }
+  if (plot.policy.isBorderline) {
+    lines.push("Borderline cooperation zone between Inpinity and Inphinity.");
+  }
+  if (plot.policy.isNexus) {
+    lines.push("Core nexus bridge zone with strategic central importance.");
+  }
+  if (plot.policy.factionLocked) {
+    lines.push("Bound to faction-side logic and placement rules.");
+  }
+  if (plot.policy.sharedUse) {
+    lines.push("Designed for collective or cross-faction utility rather than simple ownership.");
+  }
+  if (plot.policy.purchasable) {
+    lines.push("Prepared for a future purchase flow, not yet active.");
+  } else {
+    lines.push("Not part of the direct personal sale flow at this phase.");
+  }
+
+  return lines;
+}
+
 export default function PlotDetails({ plot, onToggleFavorite }: Props) {
   if (!plot) {
     return (
@@ -26,13 +183,23 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
   const favorite = isFavoritePlot(plot.id);
   const laneWeight = getLaneWeight(plot.lane);
 
+  const estimatedValue = plot.valueModel?.finalEstimate ?? plot.priceEstimate;
+  const provenance = plot.provenance;
+  const statusInfo = plot.statusInfo;
+  const policy = plot.policy;
+  const signals = getOpportunitySignals(plot);
+  const rightsSummary = getRightsSummary(plot);
+
   return (
     <div className="detailsCard">
       <div className="detailsHeader">
         <h3 style={{ margin: 0 }}>
           {plot.label} · {pretty(plot.rarity)}
         </h3>
-        <button className="toolbarButton active" onClick={() => onToggleFavorite(plot.id)}>
+        <button
+          className="toolbarButton active"
+          onClick={() => onToggleFavorite(plot.id)}
+        >
           {favorite ? "★ Favorite" : "☆ Favorite"}
         </button>
       </div>
@@ -41,15 +208,124 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
         <div>Status: {pretty(plot.status)}</div>
         <div>Faction: {pretty(plot.faction)}</div>
         <div>Kind: {pretty(plot.plotKind)}</div>
+        <div>Tier: {pretty(plot.tier)}</div>
+
         <div>Side: {pretty(plot.side)}</div>
         <div>Lane: {plot.lane}</div>
         <div>Nexus Weight: {laneWeight}</div>
         <div>Distance to Nexus: {plot.distanceToNexus}</div>
+
         <div>Position: {plot.x.toFixed(1)} / {plot.y.toFixed(1)}</div>
-        <div>Estimated Value: {plot.priceEstimate} PIT</div>
-        <div>Owner: {plot.ownerLabel || "—"}</div>
-        <div>Last Transfer: {plot.lastTransferDaysAgo != null ? `${plot.lastTransferDaysAgo} days ago` : "—"}</div>
+        <div>Estimated Value: {estimatedValue} PIT</div>
+        <div>Base Value: {plot.priceEstimate} PIT</div>
+        <div>Owner: {plot.ownerLabel || plot.owner || "—"}</div>
+        <div>
+          Last Transfer:{" "}
+          {plot.lastTransferDaysAgo != null
+            ? `${plot.lastTransferDaysAgo} days ago`
+            : "—"}
+        </div>
       </div>
+
+      <hr style={{ opacity: 0.15, margin: "16px 0" }} />
+
+      <h4 style={sectionTitleStyle()}>Policy</h4>
+      <div className="detailsGrid">
+        <div>Personal: {yesNo(policy.isPersonal)}</div>
+        <div>Community: {yesNo(policy.isCommunity)}</div>
+        <div>Borderline: {yesNo(policy.isBorderline)}</div>
+        <div>Nexus: {yesNo(policy.isNexus)}</div>
+        <div>Reservable: {yesNo(policy.reservable)}</div>
+        <div>Purchasable: {yesNo(policy.purchasable)}</div>
+        <div>Faction Locked: {yesNo(policy.factionLocked)}</div>
+        <div>Shared Use: {yesNo(policy.sharedUse)}</div>
+      </div>
+
+      <hr style={{ opacity: 0.15, margin: "16px 0" }} />
+
+      <h4 style={sectionTitleStyle()}>Rights & Plot Role</h4>
+      <div style={cardBlockStyle()}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {policy.isPersonal && <span style={badgeStyle("gray")}>Personal Zone</span>}
+          {policy.isCommunity && <span style={badgeStyle("red")}>Community Reserve</span>}
+          {policy.isBorderline && <span style={badgeStyle("green")}>Borderline Zone</span>}
+          {policy.isNexus && <span style={badgeStyle("gold")}>Nexus Core</span>}
+          {policy.sharedUse && <span style={badgeStyle("blue")}>Shared Use</span>}
+          {policy.factionLocked && <span style={badgeStyle("violet")}>Faction Locked</span>}
+        </div>
+
+        <div style={{ display: "grid", gap: 6 }}>
+          {rightsSummary.map((line, index) => (
+            <div key={index}>• {line}</div>
+          ))}
+        </div>
+      </div>
+
+      <hr style={{ opacity: 0.15, margin: "16px 0" }} />
+
+      <h4 style={sectionTitleStyle()}>Historical Value</h4>
+      <div className="detailsGrid">
+        <div>Historic Score: {provenance?.historicScore ?? "—"}</div>
+        <div>Legacy Score: {provenance?.legacyScore ?? "—"}</div>
+        <div>Provenance Score: {provenance?.provenanceScore ?? "—"}</div>
+        <div>Layer Count: {provenance?.layerCount ?? "—"}</div>
+        <div>Ownership Transfers: {provenance?.ownershipTransfers ?? "—"}</div>
+        <div>Aether Uses: {provenance?.aetherUses ?? "—"}</div>
+        <div>Historic Core: {provenance ? yesNo(provenance.isHistoricCore) : "—"}</div>
+        <div>Age In Days: {provenance?.ageInDays ?? "—"}</div>
+      </div>
+
+      <hr style={{ opacity: 0.15, margin: "16px 0" }} />
+
+      <h4 style={sectionTitleStyle()}>Maintenance & Activity</h4>
+      <div className="detailsGrid">
+        <div>Derived Status: {statusInfo?.derivedStatus ?? "—"}</div>
+        <div>Manual Override: {statusInfo?.manualStatusOverride ?? "—"}</div>
+        <div>Inactivity Level: {statusInfo?.inactivityLevel ?? "—"}</div>
+        <div>Maintenance Level: {statusInfo?.maintenanceLevel ?? "—"}</div>
+        <div>Inactivity Days: {statusInfo?.inactivityDays ?? "—"}</div>
+        <div>Maintenance Age: {statusInfo?.maintenanceAgeDays ?? "—"}</div>
+        <div>Layer Eligible: {statusInfo ? yesNo(statusInfo.layerEligible) : "—"}</div>
+        <div>Can Layer Upgrade: {statusInfo ? yesNo(statusInfo.canLayerUpgrade) : "—"}</div>
+      </div>
+
+      <hr style={{ opacity: 0.15, margin: "16px 0" }} />
+
+      <h4 style={sectionTitleStyle()}>Timeline</h4>
+      <div style={cardBlockStyle()}>
+        <div>Created: {formatUnix(provenance?.createdAt ?? plot.createdAt)}</div>
+        <div>Provenance Updated: {formatUnix(provenance?.lastUpdated)}</div>
+        <div>Last Activity: {formatUnix(statusInfo?.lastActivityAt)}</div>
+        <div>Last Maintenance: {formatUnix(statusInfo?.lastMaintenanceAt)}</div>
+      </div>
+
+      <hr style={{ opacity: 0.15, margin: "16px 0" }} />
+
+      <h4 style={sectionTitleStyle()}>Opportunity Signals</h4>
+      <div style={cardBlockStyle()}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {signals.map((signal, index) => (
+            <span key={`${signal.label}-${index}`} style={badgeStyle(signal.tone)}>
+              {signal.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {plot.valueModel && (
+        <>
+          <hr style={{ opacity: 0.15, margin: "16px 0" }} />
+          <h4 style={sectionTitleStyle()}>Value Model</h4>
+          <div className="detailsGrid">
+            <div>Base Value: {plot.valueModel.baseValue}</div>
+            <div>Rarity Multiplier: {plot.valueModel.rarityMultiplier}</div>
+            <div>Lane Multiplier: {plot.valueModel.laneMultiplier}</div>
+            <div>Nexus Multiplier: {plot.valueModel.nexusMultiplier}</div>
+            <div>Historical Multiplier: {plot.valueModel.historicalMultiplier}</div>
+            <div>Final Estimate: {plot.valueModel.finalEstimate}</div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

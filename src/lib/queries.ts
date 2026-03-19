@@ -1,7 +1,7 @@
-import { gql } from '../types/generated/gql';
+import { gql } from "../types/generated/gql";
 
 // ============================================================
-// HAUPT-DASHBOARD QUERY
+// MAIN DASHBOARD
 // ============================================================
 
 export const CITY_DASHBOARD_QUERY = gql(`
@@ -115,7 +115,12 @@ export const CITY_DASHBOARD_QUERY = gql(`
 // ============================================================
 
 export const PLOTS_PAGINATED_QUERY = gql(`
-  query GetPlotsPaginated($first: Int!, $skip: Int!, $orderBy: Plot_orderBy = plotId, $orderDirection: OrderDirection = asc) {
+  query GetPlotsPaginated(
+    $first: Int!
+    $skip: Int!
+    $orderBy: Plot_orderBy = plotId
+    $orderDirection: OrderDirection = asc
+  ) {
     plots(first: $first, skip: $skip, orderBy: $orderBy, orderDirection: $orderDirection) {
       id
       plotId
@@ -134,7 +139,12 @@ export const PLOTS_PAGINATED_QUERY = gql(`
 `);
 
 export const PLOT_STATUS_INFOS_PAGINATED_QUERY = gql(`
-  query GetPlotStatusInfosPaginated($first: Int!, $skip: Int!, $orderBy: PlotStatusInfo_orderBy = id, $orderDirection: OrderDirection = asc) {
+  query GetPlotStatusInfosPaginated(
+    $first: Int!
+    $skip: Int!
+    $orderBy: PlotStatusInfo_orderBy = id
+    $orderDirection: OrderDirection = asc
+  ) {
     plotStatusInfos(first: $first, skip: $skip, orderBy: $orderBy, orderDirection: $orderDirection) {
       id
       plot {
@@ -153,7 +163,12 @@ export const PLOT_STATUS_INFOS_PAGINATED_QUERY = gql(`
 `);
 
 export const PLOT_PROVENANCES_PAGINATED_QUERY = gql(`
-  query GetPlotProvenancesPaginated($first: Int!, $skip: Int!, $orderBy: PlotProvenance_orderBy = id, $orderDirection: OrderDirection = asc) {
+  query GetPlotProvenancesPaginated(
+    $first: Int!
+    $skip: Int!
+    $orderBy: PlotProvenance_orderBy = id
+    $orderDirection: OrderDirection = asc
+  ) {
     plotProvenances(first: $first, skip: $skip, orderBy: $orderBy, orderDirection: $orderDirection) {
       id
       plot {
@@ -175,12 +190,12 @@ export const PLOT_PROVENANCES_PAGINATED_QUERY = gql(`
 `);
 
 // ============================================================
-// PLAYER & PLOT QUERIES
+// PLAYER & PLOT
 // ============================================================
 
-export const PLAYER_QUERY = (id: string) => gql(`
-  query GetPlayer {
-    player(id: "${id}") {
+export const PLAYER_QUERY = gql(`
+  query GetPlayer($id: ID!) {
+    player(id: $id) {
       id
       cityKeyTokenId
       faction
@@ -200,9 +215,9 @@ export const PLAYERS_QUERY = gql(`
   }
 `);
 
-export const PLOT_QUERY = (id: string) => gql(`
-  query GetPlot {
-    plot(id: "${id}") {
+export const PLOT_QUERY = gql(`
+  query GetPlot($id: ID!) {
+    plot(id: $id) {
       id
       plotId
       plotType
@@ -239,12 +254,12 @@ export const PLOTS_QUERY = gql(`
 `);
 
 // ============================================================
-// WEAPON QUERIES
+// WEAPONS
 // ============================================================
 
-export const WEAPON_DEFINITION_QUERY = (id: string) => gql(`
-  query GetWeaponDefinition {
-    weaponDefinition(id: "${id}") {
+export const WEAPON_DEFINITION_QUERY = gql(`
+  query GetWeaponDefinition($id: ID!) {
+    weaponDefinition(id: $id) {
       id
       weaponDefinitionId
       name
@@ -278,9 +293,9 @@ export const WEAPON_DEFINITIONS_QUERY = gql(`
   }
 `);
 
-export const WEAPON_INSTANCE_QUERY = (id: string) => gql(`
-  query GetWeaponInstance {
-    weaponInstance(id: "${id}") {
+export const WEAPON_INSTANCE_QUERY = gql(`
+  query GetWeaponInstance($id: ID!) {
+    weaponInstance(id: $id) {
       id
       tokenId
       owner {
@@ -332,7 +347,7 @@ export const WEAPON_INSTANCES_QUERY = gql(`
 `);
 
 // ============================================================
-// LAND QUERIES
+// LAND
 // ============================================================
 
 export const PLOT_QUBIQS_QUERY = gql(`
@@ -413,7 +428,7 @@ export const QUBIQ_CONTRIBUTIONS_QUERY = gql(`
 `);
 
 // ============================================================
-// EVENT QUERIES (Ownership, Transfer, Approval)
+// CORE EVENTS
 // ============================================================
 
 export const OWNERSHIP_TRANSFERRED_EVENTS_QUERY = gql(`
@@ -470,17 +485,3 @@ export const APPROVAL_FOR_ALL_EVENTS_QUERY = gql(`
     }
   }
 `);
-
-// ============================================================
-// ALLE WEITEREN, PROBLEMATISCHEN QUERIES VORERST AUSKOMMENTIERT
-// ============================================================
-
-/*
-export const WEAPON_BONUSES_QUERY = ...
-export const WEAPON_BONUSES_COLLECTION_QUERY = ...
-export const AUTHORIZED_MINTERS_QUERY = ...
-export const BASE_URIS_QUERY = ...
-export const WEAPON_SOCKETS_QUERY = ...
-export const WEAPONS_PAUSED_QUERY = ...
-... (alle restlichen)
-*/

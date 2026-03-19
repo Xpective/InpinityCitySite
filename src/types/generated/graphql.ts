@@ -12672,7 +12672,9 @@ export type GetPlotProvenancesPaginatedQuery = {
   }>;
 };
 
-export type GetPlayerQueryVariables = Exact<{ [key: string]: never }>;
+export type GetPlayerQueryVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
 
 export type GetPlayerQuery = {
   __typename?: "Query";
@@ -12701,7 +12703,9 @@ export type GetPlayersQuery = {
   }>;
 };
 
-export type GetPlotQueryVariables = Exact<{ [key: string]: never }>;
+export type GetPlotQueryVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
 
 export type GetPlotQuery = {
   __typename?: "Query";
@@ -12742,7 +12746,9 @@ export type GetPlotsQuery = {
   }>;
 };
 
-export type GetWeaponDefinitionQueryVariables = Exact<{ [key: string]: never }>;
+export type GetWeaponDefinitionQueryVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
 
 export type GetWeaponDefinitionQuery = {
   __typename?: "Query";
@@ -12785,7 +12791,9 @@ export type GetWeaponDefinitionsQuery = {
   }>;
 };
 
-export type GetWeaponInstanceQueryVariables = Exact<{ [key: string]: never }>;
+export type GetWeaponInstanceQueryVariables = Exact<{
+  id: Scalars["ID"]["input"];
+}>;
 
 export type GetWeaponInstanceQuery = {
   __typename?: "Query";
@@ -13837,6 +13845,16 @@ export const GetPlayerDocument = {
       kind: "OperationDefinition",
       operation: "query",
       name: { kind: "Name", value: "GetPlayer" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
@@ -13847,7 +13865,10 @@ export const GetPlayerDocument = {
               {
                 kind: "Argument",
                 name: { kind: "Name", value: "id" },
-                value: { kind: "StringValue", value: "", block: false },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
               },
             ],
             selectionSet: {
@@ -13957,6 +13978,16 @@ export const GetPlotDocument = {
       kind: "OperationDefinition",
       operation: "query",
       name: { kind: "Name", value: "GetPlot" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
@@ -13967,7 +13998,10 @@ export const GetPlotDocument = {
               {
                 kind: "Argument",
                 name: { kind: "Name", value: "id" },
-                value: { kind: "StringValue", value: "", block: false },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
               },
             ],
             selectionSet: {
@@ -14095,6 +14129,16 @@ export const GetWeaponDefinitionDocument = {
       kind: "OperationDefinition",
       operation: "query",
       name: { kind: "Name", value: "GetWeaponDefinition" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
@@ -14105,7 +14149,10 @@ export const GetWeaponDefinitionDocument = {
               {
                 kind: "Argument",
                 name: { kind: "Name", value: "id" },
-                value: { kind: "StringValue", value: "", block: false },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
               },
             ],
             selectionSet: {
@@ -14247,6 +14294,16 @@ export const GetWeaponInstanceDocument = {
       kind: "OperationDefinition",
       operation: "query",
       name: { kind: "Name", value: "GetWeaponInstance" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "id" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
       selectionSet: {
         kind: "SelectionSet",
         selections: [
@@ -14257,7 +14314,10 @@ export const GetWeaponInstanceDocument = {
               {
                 kind: "Argument",
                 name: { kind: "Name", value: "id" },
-                value: { kind: "StringValue", value: "", block: false },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "id" },
+                },
               },
             ],
             selectionSet: {
