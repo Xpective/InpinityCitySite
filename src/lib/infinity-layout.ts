@@ -6,9 +6,10 @@ export const CENTER_X = SVG_WIDTH / 2;
 export const CENTER_Y = SVG_HEIGHT / 2;
 
 const PERSONAL_SIZE = 16;
-const COMMUNITY_SIZE = 48;
-const BORDERLINE_SIZE = 44;
-const NEXUS_SIZE = 56;
+const COMMUNITY_SIZE = 50;
+const MID_COMMUNITY_SIZE = 42;
+const BORDERLINE_SIZE = 34;
+const NEUTRAL_SIZE = 34;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -40,24 +41,25 @@ export function getInfinityPath(): string {
 
 export function getFactionGlow(side: "left" | "right"): string {
   return side === "left"
-    ? "radial-gradient(circle at 30% 50%, rgba(255,180,80,0.16), rgba(255,120,60,0.05), transparent 60%)"
-    : "radial-gradient(circle at 70% 50%, rgba(120,170,255,0.16), rgba(140,110,255,0.05), transparent 60%)";
+    ? "radial-gradient(circle at 30% 50%, rgba(255,160,95,0.18), rgba(255,110,70,0.07), transparent 60%)"
+    : "radial-gradient(circle at 70% 50%, rgba(100,150,255,0.18), rgba(115,105,255,0.07), transparent 60%)";
 }
 
 export function getRarityColor(rarity: InfinityRarity): string {
-  if (rarity === "common") return "#9ca3af";
-  if (rarity === "uncommon") return "#60a5fa";
-  if (rarity === "rare") return "#38bdf8";
-  if (rarity === "epic") return "#a78bfa";
-  if (rarity === "legendary") return "#f59e0b";
-  return "#facc15";
+  if (rarity === "common") return "#93a0b2";
+  if (rarity === "uncommon") return "#68b6ff";
+  if (rarity === "rare") return "#53d7ff";
+  if (rarity === "epic") return "#9b7cff";
+  if (rarity === "legendary") return "#f4b84d";
+  return "#f8de7a";
 }
 
 export function getFactionStroke(faction: InfinityFaction): string {
-  if (faction === "inpinity") return "#f5c16c";
-  if (faction === "inphinity") return "#9fb7ff";
-  if (faction === "borderline") return "#f4d58d";
-  if (faction === "community") return "#f8e7a2";
+  if (faction === "inpinity") return "#ffbf78";
+  if (faction === "inphinity") return "#9eb7ff";
+  if (faction === "borderline") return "#7dff4d";
+  if (faction === "community") return "#ff7a59";
+  if (faction === "neutral") return "#2f65ff";
   return "rgba(255,255,255,0.35)";
 }
 
@@ -75,7 +77,7 @@ export function estimatePlotPrice(plot: Pick<InfinityPlot, "rarity" | "lane" | "
   let base = 120;
 
   if (plot.plotKind === "community-25x25") base = 2500;
-  if (plot.plotKind === "borderline-25x25") base = 3100;
+  if (plot.plotKind === "borderline-25x25") base = 2900;
   if (plot.plotKind === "nexus") base = 5000;
 
   const rarityBoost =
@@ -115,18 +117,18 @@ function getStatusByIndex(i: number): InfinityPlotStatus {
 
 function buildPersonalPlots(): InfinityPlot[] {
   const plots: InfinityPlot[] = [];
-  const steps = 220;
+  const steps = 240;
   let created = 0;
 
   for (let i = 0; i < steps; i++) {
     const t = (Math.PI * 2 * i) / steps;
     const anchor = getLemniscatePoint(t);
 
-    const ringOffset = (i % 2 === 0 ? 1 : -1) * (20 + (i % 5) * 7);
+    const ringOffset = (i % 2 === 0 ? 1 : -1) * (18 + (i % 6) * 7);
     const x = anchor.x + Math.cos(t + Math.PI / 2) * ringOffset;
     const y = anchor.y + Math.sin(t + Math.PI / 2) * ringOffset;
 
-    const side = x < CENTER_X - 20 ? "left" : x > CENTER_X + 20 ? "right" : "center";
+    const side = x < CENTER_X - 30 ? "left" : x > CENTER_X + 30 ? "right" : "center";
     if (side === "center") continue;
 
     const distanceToNexus = distance(x, y, CENTER_X, CENTER_Y);
@@ -166,149 +168,414 @@ function buildPersonalPlots(): InfinityPlot[] {
 
 function buildCenterPlots(): InfinityPlot[] {
   const raw: Omit<InfinityPlot, "priceEstimate">[] = [
-    {
-      id: "community-1",
-      index: 10001,
-      x: CENTER_X - 110,
-      y: CENTER_Y - 72,
-      width: COMMUNITY_SIZE,
-      height: COMMUNITY_SIZE,
-      lane: 6,
-      side: "center",
-      distanceToNexus: 54,
-      rarity: "mythic",
-      faction: "community",
-      status: "community",
-      label: "COMMUNITY A",
-      plotKind: "community-25x25",
-    },
-    {
-      id: "community-2",
-      index: 10002,
-      x: CENTER_X + 110,
-      y: CENTER_Y - 72,
-      width: COMMUNITY_SIZE,
-      height: COMMUNITY_SIZE,
-      lane: 6,
-      side: "center",
-      distanceToNexus: 54,
-      rarity: "mythic",
-      faction: "community",
-      status: "community",
-      label: "COMMUNITY B",
-      plotKind: "community-25x25",
-    },
-    {
-      id: "community-3",
-      index: 10003,
-      x: CENTER_X - 110,
-      y: CENTER_Y + 72,
-      width: COMMUNITY_SIZE,
-      height: COMMUNITY_SIZE,
-      lane: 6,
-      side: "center",
-      distanceToNexus: 54,
-      rarity: "mythic",
-      faction: "community",
-      status: "community",
-      label: "COMMUNITY C",
-      plotKind: "community-25x25",
-    },
-    {
-      id: "community-4",
-      index: 10004,
-      x: CENTER_X + 110,
-      y: CENTER_Y + 72,
-      width: COMMUNITY_SIZE,
-      height: COMMUNITY_SIZE,
-      lane: 6,
-      side: "center",
-      distanceToNexus: 54,
-      rarity: "mythic",
-      faction: "community",
-      status: "community",
-      label: "COMMUNITY D",
-      plotKind: "community-25x25",
-    },
+    // BORDERLINE (grün) vertikal
     {
       id: "borderline-1",
       index: 10101,
-      x: CENTER_X - 42,
-      y: CENTER_Y - 72,
+      x: CENTER_X,
+      y: CENTER_Y - 210,
       width: BORDERLINE_SIZE,
       height: BORDERLINE_SIZE,
       lane: 6,
       side: "center",
-      distanceToNexus: 30,
-      rarity: "legendary",
+      distanceToNexus: 210,
+      rarity: "epic",
       faction: "borderline",
       status: "borderline",
-      label: "BORDER 1",
+      label: "B1",
       plotKind: "borderline-25x25",
     },
     {
       id: "borderline-2",
       index: 10102,
-      x: CENTER_X + 42,
-      y: CENTER_Y - 72,
+      x: CENTER_X,
+      y: CENTER_Y - 156,
       width: BORDERLINE_SIZE,
       height: BORDERLINE_SIZE,
       lane: 6,
       side: "center",
-      distanceToNexus: 30,
-      rarity: "legendary",
+      distanceToNexus: 156,
+      rarity: "epic",
       faction: "borderline",
       status: "borderline",
-      label: "BORDER 2",
+      label: "B2",
       plotKind: "borderline-25x25",
     },
     {
       id: "borderline-3",
       index: 10103,
-      x: CENTER_X - 42,
-      y: CENTER_Y + 72,
+      x: CENTER_X,
+      y: CENTER_Y - 102,
       width: BORDERLINE_SIZE,
       height: BORDERLINE_SIZE,
       lane: 6,
       side: "center",
-      distanceToNexus: 30,
+      distanceToNexus: 102,
       rarity: "legendary",
       faction: "borderline",
       status: "borderline",
-      label: "BORDER 3",
+      label: "B3",
       plotKind: "borderline-25x25",
     },
     {
       id: "borderline-4",
       index: 10104,
-      x: CENTER_X + 42,
-      y: CENTER_Y + 72,
+      x: CENTER_X,
+      y: CENTER_Y - 48,
       width: BORDERLINE_SIZE,
       height: BORDERLINE_SIZE,
       lane: 6,
       side: "center",
-      distanceToNexus: 30,
-      rarity: "legendary",
+      distanceToNexus: 48,
+      rarity: "mythic",
       faction: "borderline",
       status: "borderline",
-      label: "BORDER 4",
+      label: "B4",
       plotKind: "borderline-25x25",
     },
     {
-      id: "nexus-1",
-      index: 10201,
+      id: "borderline-5",
+      index: 10105,
       x: CENTER_X,
-      y: CENTER_Y - 8,
-      width: NEXUS_SIZE,
-      height: NEXUS_SIZE,
+      y: CENTER_Y + 48,
+      width: BORDERLINE_SIZE,
+      height: BORDERLINE_SIZE,
+      lane: 6,
+      side: "center",
+      distanceToNexus: 48,
+      rarity: "mythic",
+      faction: "borderline",
+      status: "borderline",
+      label: "B5",
+      plotKind: "borderline-25x25",
+    },
+    {
+      id: "borderline-6",
+      index: 10106,
+      x: CENTER_X,
+      y: CENTER_Y + 102,
+      width: BORDERLINE_SIZE,
+      height: BORDERLINE_SIZE,
+      lane: 6,
+      side: "center",
+      distanceToNexus: 102,
+      rarity: "legendary",
+      faction: "borderline",
+      status: "borderline",
+      label: "B6",
+      plotKind: "borderline-25x25",
+    },
+    {
+      id: "borderline-7",
+      index: 10107,
+      x: CENTER_X,
+      y: CENTER_Y + 156,
+      width: BORDERLINE_SIZE,
+      height: BORDERLINE_SIZE,
+      lane: 6,
+      side: "center",
+      distanceToNexus: 156,
+      rarity: "epic",
+      faction: "borderline",
+      status: "borderline",
+      label: "B7",
+      plotKind: "borderline-25x25",
+    },
+    {
+      id: "borderline-8",
+      index: 10108,
+      x: CENTER_X,
+      y: CENTER_Y + 210,
+      width: BORDERLINE_SIZE,
+      height: BORDERLINE_SIZE,
+      lane: 6,
+      side: "center",
+      distanceToNexus: 210,
+      rarity: "epic",
+      faction: "borderline",
+      status: "borderline",
+      label: "B8",
+      plotKind: "borderline-25x25",
+    },
+
+    // NEUTRAL (blau) am Kreuz
+    {
+      id: "neutral-1",
+      index: 10201,
+      x: CENTER_X - 58,
+      y: CENTER_Y,
+      width: NEUTRAL_SIZE,
+      height: NEUTRAL_SIZE,
+      lane: 7,
+      side: "center",
+      distanceToNexus: 58,
+      rarity: "legendary",
+      faction: "neutral",
+      status: "nexus",
+      label: "N1",
+      plotKind: "nexus",
+    },
+    {
+      id: "neutral-2",
+      index: 10202,
+      x: CENTER_X,
+      y: CENTER_Y,
+      width: NEUTRAL_SIZE,
+      height: NEUTRAL_SIZE,
       lane: 7,
       side: "center",
       distanceToNexus: 0,
       rarity: "mythic",
       faction: "neutral",
       status: "nexus",
-      label: "NEXUS",
+      label: "N2",
       plotKind: "nexus",
+    },
+    {
+      id: "neutral-3",
+      index: 10203,
+      x: CENTER_X + 58,
+      y: CENTER_Y,
+      width: NEUTRAL_SIZE,
+      height: NEUTRAL_SIZE,
+      lane: 7,
+      side: "center",
+      distanceToNexus: 58,
+      rarity: "legendary",
+      faction: "neutral",
+      status: "nexus",
+      label: "N3",
+      plotKind: "nexus",
+    },
+    {
+      id: "neutral-4",
+      index: 10204,
+      x: CENTER_X,
+      y: CENTER_Y - 58,
+      width: NEUTRAL_SIZE,
+      height: NEUTRAL_SIZE,
+      lane: 7,
+      side: "center",
+      distanceToNexus: 58,
+      rarity: "legendary",
+      faction: "neutral",
+      status: "nexus",
+      label: "N4",
+      plotKind: "nexus",
+    },
+    {
+      id: "neutral-5",
+      index: 10205,
+      x: CENTER_X,
+      y: CENTER_Y + 58,
+      width: NEUTRAL_SIZE,
+      height: NEUTRAL_SIZE,
+      lane: 7,
+      side: "center",
+      distanceToNexus: 58,
+      rarity: "legendary",
+      faction: "neutral",
+      status: "nexus",
+      label: "N5",
+      plotKind: "nexus",
+    },
+
+    // COMMUNITY links / Inpinity
+    {
+      id: "community-left-top",
+      index: 10301,
+      x: CENTER_X - 150,
+      y: CENTER_Y - 92,
+      width: COMMUNITY_SIZE,
+      height: COMMUNITY_SIZE,
+      lane: 6,
+      side: "left",
+      distanceToNexus: 176,
+      rarity: "legendary",
+      faction: "community",
+      status: "community",
+      label: "CL1",
+      plotKind: "community-25x25",
+    },
+    {
+      id: "community-left-bottom",
+      index: 10302,
+      x: CENTER_X - 150,
+      y: CENTER_Y + 92,
+      width: COMMUNITY_SIZE,
+      height: COMMUNITY_SIZE,
+      lane: 6,
+      side: "left",
+      distanceToNexus: 176,
+      rarity: "legendary",
+      faction: "community",
+      status: "community",
+      label: "CL2",
+      plotKind: "community-25x25",
+    },
+    {
+      id: "community-left-outer-top",
+      index: 10303,
+      x: CENTER_X - 360,
+      y: CENTER_Y - 72,
+      width: COMMUNITY_SIZE,
+      height: COMMUNITY_SIZE,
+      lane: 4,
+      side: "left",
+      distanceToNexus: 367,
+      rarity: "epic",
+      faction: "community",
+      status: "community",
+      label: "CL3",
+      plotKind: "community-25x25",
+    },
+    {
+      id: "community-left-outer-bottom",
+      index: 10304,
+      x: CENTER_X - 360,
+      y: CENTER_Y + 72,
+      width: COMMUNITY_SIZE,
+      height: COMMUNITY_SIZE,
+      lane: 4,
+      side: "left",
+      distanceToNexus: 367,
+      rarity: "epic",
+      faction: "community",
+      status: "community",
+      label: "CL4",
+      plotKind: "community-25x25",
+    },
+
+    // COMMUNITY rechts / Inphinity
+    {
+      id: "community-right-top",
+      index: 10305,
+      x: CENTER_X + 150,
+      y: CENTER_Y - 92,
+      width: COMMUNITY_SIZE,
+      height: COMMUNITY_SIZE,
+      lane: 6,
+      side: "right",
+      distanceToNexus: 176,
+      rarity: "legendary",
+      faction: "community",
+      status: "community",
+      label: "CR1",
+      plotKind: "community-25x25",
+    },
+    {
+      id: "community-right-bottom",
+      index: 10306,
+      x: CENTER_X + 150,
+      y: CENTER_Y + 92,
+      width: COMMUNITY_SIZE,
+      height: COMMUNITY_SIZE,
+      lane: 6,
+      side: "right",
+      distanceToNexus: 176,
+      rarity: "legendary",
+      faction: "community",
+      status: "community",
+      label: "CR2",
+      plotKind: "community-25x25",
+    },
+    {
+      id: "community-right-outer-top",
+      index: 10307,
+      x: CENTER_X + 360,
+      y: CENTER_Y - 72,
+      width: COMMUNITY_SIZE,
+      height: COMMUNITY_SIZE,
+      lane: 4,
+      side: "right",
+      distanceToNexus: 367,
+      rarity: "epic",
+      faction: "community",
+      status: "community",
+      label: "CR3",
+      plotKind: "community-25x25",
+    },
+    {
+      id: "community-right-outer-bottom",
+      index: 10308,
+      x: CENTER_X + 360,
+      y: CENTER_Y + 72,
+      width: COMMUNITY_SIZE,
+      height: COMMUNITY_SIZE,
+      lane: 4,
+      side: "right",
+      distanceToNexus: 367,
+      rarity: "epic",
+      faction: "community",
+      status: "community",
+      label: "CR4",
+      plotKind: "community-25x25",
+    },
+
+    // 4 weitere mittlere Community plots
+    {
+      id: "community-mid-1",
+      index: 10309,
+      x: CENTER_X - 88,
+      y: CENTER_Y - 92,
+      width: MID_COMMUNITY_SIZE,
+      height: MID_COMMUNITY_SIZE,
+      lane: 6,
+      side: "center",
+      distanceToNexus: 127,
+      rarity: "legendary",
+      faction: "community",
+      status: "community",
+      label: "CM1",
+      plotKind: "community-25x25",
+    },
+    {
+      id: "community-mid-2",
+      index: 10310,
+      x: CENTER_X + 88,
+      y: CENTER_Y - 92,
+      width: MID_COMMUNITY_SIZE,
+      height: MID_COMMUNITY_SIZE,
+      lane: 6,
+      side: "center",
+      distanceToNexus: 127,
+      rarity: "legendary",
+      faction: "community",
+      status: "community",
+      label: "CM2",
+      plotKind: "community-25x25",
+    },
+    {
+      id: "community-mid-3",
+      index: 10311,
+      x: CENTER_X - 88,
+      y: CENTER_Y + 92,
+      width: MID_COMMUNITY_SIZE,
+      height: MID_COMMUNITY_SIZE,
+      lane: 6,
+      side: "center",
+      distanceToNexus: 127,
+      rarity: "legendary",
+      faction: "community",
+      status: "community",
+      label: "CM3",
+      plotKind: "community-25x25",
+    },
+    {
+      id: "community-mid-4",
+      index: 10312,
+      x: CENTER_X + 88,
+      y: CENTER_Y + 92,
+      width: MID_COMMUNITY_SIZE,
+      height: MID_COMMUNITY_SIZE,
+      lane: 6,
+      side: "center",
+      distanceToNexus: 127,
+      rarity: "legendary",
+      faction: "community",
+      status: "community",
+      label: "CM4",
+      plotKind: "community-25x25",
     },
   ];
 

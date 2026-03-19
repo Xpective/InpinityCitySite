@@ -7,7 +7,6 @@ import {
   getFactionGlow,
   getFactionStroke,
   getInfinityPath,
-  getRarityColor,
   getStatusOpacity,
 } from "../../lib/infinity-layout";
 
@@ -19,29 +18,58 @@ type Props = {
   heatmapMode: boolean;
 };
 
+function mix(a: number, b: number, t: number): number {
+  return Math.round(a + (b - a) * t);
+}
+
+function getPersonalSideColor(plot: InfinityPlot): string {
+  const t = Math.min(plot.distanceToNexus / 380, 1);
+
+  // Zur Mitte hin Gold, nach außen entsättigt aber nicht grau tot
+  if (plot.side === "left") {
+    const inner = { r: 245, g: 196, b: 110 };
+    const outer = { r: 134, g: 122, b: 116 };
+    return `rgb(${mix(inner.r, outer.r, t)}, ${mix(inner.g, outer.g, t)}, ${mix(inner.b, outer.b, t)})`;
+  }
+
+  if (plot.side === "right") {
+    const inner = { r: 245, g: 196, b: 110 };
+    const outer = { r: 116, g: 126, b: 142 };
+    return `rgb(${mix(inner.r, outer.r, t)}, ${mix(inner.g, outer.g, t)}, ${mix(inner.b, outer.b, t)})`;
+  }
+
+  return "rgb(220,200,140)";
+}
+
 function getHeatColor(plot: InfinityPlot): string {
   const d = Math.min(plot.distanceToNexus, 360);
   const intensity = 1 - d / 360;
 
   if (plot.side === "left") {
-    const r = Math.round(255 - intensity * 25);
-    const g = Math.round(130 + intensity * 80);
-    const b = Math.round(80 - intensity * 40);
-    return `rgb(${r},${g},${Math.max(20, b)})`;
+    const r = Math.round(255 - intensity * 12);
+    const g = Math.round(145 + intensity * 70);
+    const b = Math.round(75 - intensity * 35);
+    return `rgb(${r},${g},${Math.max(28, b)})`;
   }
 
   if (plot.side === "right") {
-    const r = Math.round(90 + intensity * 70);
-    const g = Math.round(120 + intensity * 40);
-    const b = Math.round(255 - intensity * 20);
+    const r = Math.round(95 + intensity * 55);
+    const g = Math.round(125 + intensity * 35);
+    const b = Math.round(255 - intensity * 24);
     return `rgb(${r},${g},${b})`;
   }
 
-  return `rgb(${255 - intensity * 20}, ${220 - intensity * 10}, ${120})`;
+  return `rgb(${245 - intensity * 8}, ${220 - intensity * 10}, ${120})`;
 }
 
 function getPlotFill(plot: InfinityPlot, heatmapMode: boolean): string {
-  return heatmapMode ? getHeatColor(plot) : getRarityColor(plot.rarity);
+  if (heatmapMode) return getHeatColor(plot);
+
+  if (plot.faction === "community") return "#ff3b30";
+  if (plot.faction === "neutral") return "#1d4cff";
+  if (plot.faction === "borderline") return "#59ff2b";
+
+  return getPersonalSideColor(plot);
 }
 
 export default function InfinityMap({
@@ -56,9 +84,10 @@ export default function InfinityMap({
   return (
     <div className="mapWrap" id="city-map-capture">
       <div className="mapLegend">
-        <div>Left: Inpinity</div>
-        <div>Right: Inphinity</div>
-        <div>Center: Borderline / Community</div>
+        <div><span style={{ color: "#ff3b30" }}>■</span> Community</div>
+        <div><span style={{ color: "#1d4cff" }}>■</span> Neutral</div>
+        <div><span style={{ color: "#59ff2b" }}>■</span> Borderline</div>
+        <div><span style={{ color: "#f5c46e" }}>■</span> Inpinity / Inphinity personal plots</div>
       </div>
 
       <svg viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`} className="citySvg">
@@ -70,8 +99,9 @@ export default function InfinityMap({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+
           <filter id="nexusGlow">
-            <feGaussianBlur stdDeviation="12" result="blur" />
+            <feGaussianBlur stdDeviation="14" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
@@ -87,25 +117,28 @@ export default function InfinityMap({
           <div style={{ width: "100%", height: "100%", background: getFactionGlow("right") }} />
         </foreignObject>
 
-        <path d={infinityPath} fill="none" stroke="rgba(255,215,130,0.16)" strokeWidth="26" filter="url(#softGlow)" />
-        <path d={infinityPath} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
-
-        <rect
-          x={CENTER_X - 8}
-          y={CENTER_Y - 140}
-          width={16}
-          height={280}
-          rx={6}
-          fill="rgba(255,215,130,0.32)"
-          filter="url(#nexusGlow)"
+        <path
+          d={infinityPath}
+          fill="none"
+          stroke="rgba(245, 214, 149, 0.18)"
+          strokeWidth="28"
+          filter="url(#softGlow)"
         />
+        <path
+          d={infinityPath}
+          fill="none"
+          stroke="rgba(255,255,255,0.14)"
+          strokeWidth="3"
+        />
+
+        {/* Brücke */}
         <rect
-          x={CENTER_X - 140}
-          y={CENTER_Y - 8}
-          width={280}
-          height={16}
-          rx={6}
-          fill="rgba(255,215,130,0.28)"
+          x={CENTER_X - 210}
+          y={CENTER_Y - 10}
+          width={420}
+          height={20}
+          rx={8}
+          fill="rgba(245,206,126,0.88)"
           filter="url(#nexusGlow)"
         />
 
@@ -116,36 +149,19 @@ export default function InfinityMap({
           const opacity = getStatusOpacity(plot.status);
 
           return (
-            <g
-              key={plot.id}
-              onClick={() => onSelectPlot(plot)}
-              style={{ cursor: "pointer" }}
-            >
+            <g key={plot.id} onClick={() => onSelectPlot(plot)} style={{ cursor: "pointer" }}>
               <rect
                 x={plot.x - plot.width / 2}
                 y={plot.y - plot.height / 2}
                 width={selected ? plot.width * 1.12 : plot.width}
                 height={selected ? plot.height * 1.12 : plot.height}
-                rx={plot.plotKind === "personal-5x5" ? 4 : 8}
-                ry={plot.plotKind === "personal-5x5" ? 4 : 8}
+                rx={plot.plotKind === "personal-5x5" ? 4 : 7}
+                ry={plot.plotKind === "personal-5x5" ? 4 : 7}
                 fill={fill}
                 stroke={selected ? "#ffffff" : stroke}
                 strokeWidth={selected ? 3 : 1.4}
                 opacity={opacity}
                 filter={plot.plotKind !== "personal-5x5" ? "url(#softGlow)" : undefined}
-              />
-
-              <rect
-                x={plot.x - plot.width / 2 - 3}
-                y={plot.y - plot.height / 2 - 3}
-                width={plot.width + 6}
-                height={plot.height + 6}
-                rx={plot.plotKind === "personal-5x5" ? 6 : 10}
-                ry={plot.plotKind === "personal-5x5" ? 6 : 10}
-                fill="none"
-                stroke="rgba(255,255,255,0.08)"
-                strokeWidth={plot.lane * 0.35}
-                opacity={0.4}
               />
 
               {showLabels && (
@@ -154,7 +170,7 @@ export default function InfinityMap({
                   y={plot.y + 4}
                   textAnchor="middle"
                   fontSize={plot.plotKind === "personal-5x5" ? "7" : "10"}
-                  fill="rgba(255,255,255,0.9)"
+                  fill="rgba(255,255,255,0.94)"
                   style={{ pointerEvents: "none", userSelect: "none" }}
                 >
                   {plot.label}
@@ -164,10 +180,10 @@ export default function InfinityMap({
           );
         })}
 
-        <text x={CENTER_X - 260} y={CENTER_Y} fill="rgba(255,220,150,0.7)" fontSize="18">
+        <text x={CENTER_X - 520} y={CENTER_Y + 5} fill="rgba(255,235,190,0.95)" fontSize="26" fontWeight="700">
           INPINITY
         </text>
-        <text x={CENTER_X + 165} y={CENTER_Y} fill="rgba(180,200,255,0.7)" fontSize="18">
+        <text x={CENTER_X + 330} y={CENTER_Y + 5} fill="rgba(225,235,255,0.95)" fontSize="26" fontWeight="700">
           INPHINITY
         </text>
       </svg>
