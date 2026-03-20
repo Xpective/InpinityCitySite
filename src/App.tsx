@@ -4,6 +4,7 @@ import CityToolbar from "./components/city/CityToolbar";
 import PlotDetails from "./components/city/PlotDetails";
 import InfinityMap from "./components/city/InfinityMap";
 import MintPreparationPanel from "./components/city/MintPreparationPanel";
+import { useLivePlotProgress } from "./hooks/useLivePlotProgress";
 
 import { getFavoritePlotIds, toggleFavoritePlot } from "./lib/favorites";
 import { requestGraphQL } from "./lib/graphql";
@@ -17,6 +18,11 @@ import {
   type ResourceEligibility,
 } from "./lib/resource-check";
 import type { CityConfigSnapshot } from "./lib/city-config";
+import {
+  runQubiqContributionFlow,
+  type QubiqFlowResult,
+  type QubiqFlowStep,
+} from "./lib/city-qubiq-flow";
 
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import ErrorMessage from "./components/common/ErrorMessage";
@@ -38,6 +44,11 @@ type SpecialFilter =
   | "borderline-only"
   | "community-only"
   | "nexus-only";
+
+type SelectedQubiqCell = {
+  x: number;
+  y: number;
+};
 
 function normalize(value: string): string {
   return value.trim().toLowerCase();
@@ -135,6 +146,28 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<AppError | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+
+  const [reservedPlotId, setReservedPlotId] = useState<string | null>(null);
+  const [selectedQubiqCell, setSelectedQubiqCell] = useState<SelectedQubiqCell>({
+    x: 0,
+    y: 0,
+  });
+  const [txStep, setTxStep] = useState<QubiqFlowStep>("idle");
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [flowResult, setFlowResult] = useState<QubiqFlowResult | null>(null);
+  const [flowBusy, setFlowBusy] = useState(false);
+
+  const activePlotId = useMemo(() => {
+    if (reservedPlotId) return reservedPlotId;
+    if (selectedPlot?.plotId) return selectedPlot.plotId;
+    return null;
+  }, [reservedPlotId, selectedPlot]);
+
+  const livePlotProgress = useLivePlotProgress(
+    activePlotId,
+    selectedQubiqCell,
+    retryCount
+  );
 
   useEffect(() => {
     setFavoriteIds(getFavoritePlotIds());
@@ -259,7 +292,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [wallet, selectedPlot]);
+  }, [wallet, selectedPlot, retryCount]);
 
   const handleRetry = (): void => {
     setRetryCount((prev) => prev + 1);
@@ -379,6 +412,66 @@ export default function App() {
     }
   }
 
+  async function handlePrepareQubiqContribution(): Promise<void> {
+    if (!wallet.address) {
+      await handleConnectWallet();
+      return;
+    }
+
+    setFlowBusy(true);
+    setTxStep("validate");
+    setTxHash(null);
+    setFlowResult(null);
+
+    try {
+      const result = await runQubiqContributionFlow({
+        walletAddress: wallet.address,
+        slotIndex: 0,
+        desiredFaction: selectedPlot?.faction === "inphinity" ? "inphinity" : "inpinity",
+        qubiqX: selectedQubiqCell.x,
+        qubiqY: selectedQubiqCell.y,
+        resourceEligibility,
+      });
+
+      setFlowResult(result);
+      setTxStep(result.step);
+
+      if (result.txHash) {
+        setTxHash(result.txHash);
+      }
+
+      if (result.plotId != null) {
+        setReservedPlotId(result.plotId.toString());
+      }
+
+      if (
+        result.code === "reservation_sent" ||
+        result.code === "approval_sent" ||
+        result.code === "contribution_sent" ||
+        result.code === "ok"
+      ) {
+        setRetryCount((prev) => prev + 1);
+      }
+
+      if (result.code === "contribution_sent") {
+        setTxStep("done");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unexpected Qubiq preparation error.";
+
+      setFlowResult({
+        ok: false,
+        code: "unexpected_error",
+        step: "error",
+        message,
+      });
+      setTxStep("error");
+    } finally {
+      setFlowBusy(false);
+    }
+  }
+
   return (
     <div className="page">
       <section className="hero panel">
@@ -400,21 +493,39 @@ export default function App() {
           </div>
           <div className="card">
             <div className="muted">CityRegistry</div>
-            <strong>follows</strong>
+            <strong>live</strong>
           </div>
           <div className="card">
             <div className="muted">CityLand</div>
-            <strong>follows</strong>
+            <strong>live</strong>
           </div>
           <div className="card">
             <div className="muted">CityConfig</div>
-            <strong>{cityConfigSnapshot ? "loaded" : "follows"}</strong>
+            <strong>{cityConfigSnapshot ? "loaded" : "loading / unavailable"}</strong>
           </div>
           <div className="card">
-            <div className="muted">CityStatus</div>
-            <strong>follows</strong>
+            <div className="muted">Flow Step</div>
+            <strong>{txStep}</strong>
           </div>
         </div>
+
+        {(reservedPlotId || txHash) && (
+          <div
+            style={{
+              marginTop: 14,
+              display: "grid",
+              gap: 6,
+              padding: 12,
+              borderRadius: 12,
+              background: "rgba(255,255,255,0.035)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <div><strong>Reserved Plot ID:</strong> {reservedPlotId || "—"}</div>
+            <div><strong>Selected Qubiq Cell:</strong> ({selectedQubiqCell.x}, {selectedQubiqCell.y})</div>
+            <div><strong>Latest TX:</strong> {txHash || "—"}</div>
+          </div>
+        )}
       </section>
 
       <section className="panel">
@@ -539,6 +650,18 @@ export default function App() {
               eligibility={eligibility}
               resourceEligibility={resourceEligibility}
               onConnectWallet={handleConnectWallet}
+              onPrepareContribution={handlePrepareQubiqContribution}
+              flowBusy={flowBusy}
+              flowStep={txStep}
+              flowResult={flowResult}
+              selectedQubiqCell={selectedQubiqCell}
+              onSelectQubiqCell={setSelectedQubiqCell}
+              reservedPlotId={reservedPlotId}
+              txHash={txHash}
+              liveCompletion={livePlotProgress.completion}
+              liveQubiq={livePlotProgress.qubiq}
+              liveLoading={livePlotProgress.loading}
+              liveError={livePlotProgress.error}
             />
           </div>
         </div>
@@ -548,11 +671,12 @@ export default function App() {
         <h2>Marriage phase: mock layout + live subgraph</h2>
         <p>
           The ∞ layout stays visual-first. Real subgraph data is now bound onto the
-          city vision through the merge layer, without enabling final minting yet.
+          city vision through the merge layer, while registry/land flow is prepared
+          for real reservation and Qubiq contribution.
         </p>
         <p style={{ marginBottom: 0 }}>
-          Next step: activate deeper resource checks from farming, then wire the
-          real reservation flow before finally enabling mint.
+          Next step: upgrade MintPreparationPanel into a real build terminal with
+          action sections, approval state, flow messaging, and Qubiq cell control.
         </p>
       </section>
     </div>
