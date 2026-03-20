@@ -24,6 +24,10 @@ import {
   type QubiqFlowStep,
 } from "./lib/city-qubiq-flow";
 import { readRegistryState } from "./lib/city-registry";
+import {
+  readOwnedCityKeys,
+  type CityKeyOption,
+} from "./lib/city-key";
 
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import ErrorMessage from "./components/common/ErrorMessage";
@@ -140,6 +144,9 @@ export default function App() {
     chainId: null,
     chosenFaction: null,
   });
+
+  const [ownedCityKeys, setOwnedCityKeys] = useState<CityKeyOption[]>([]);
+  const [selectedCityKeyTokenId, setSelectedCityKeyTokenId] = useState<string>("");
 
   const [cityConfigSnapshot, setCityConfigSnapshot] = useState<CityConfigSnapshot | null>(null);
   const [resourceEligibility, setResourceEligibility] = useState<ResourceEligibility | null>(null);
@@ -295,6 +302,43 @@ export default function App() {
     }
 
     loadWalletFaction();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [wallet.isConnected, wallet.address, retryCount]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOwnedKeys() {
+      if (!wallet.isConnected || !wallet.address) {
+        setOwnedCityKeys([]);
+        setSelectedCityKeyTokenId("");
+        return;
+      }
+
+      try {
+        const keys = await readOwnedCityKeys(wallet.address);
+        if (cancelled) return;
+
+        setOwnedCityKeys(keys);
+        setSelectedCityKeyTokenId((prev) => {
+          if (prev && keys.some((item) => item.tokenId === prev)) {
+            return prev;
+          }
+          return keys[0]?.tokenId || "";
+        });
+      } catch (err) {
+        console.warn("City key NFT read failed:", err);
+        if (!cancelled) {
+          setOwnedCityKeys([]);
+          setSelectedCityKeyTokenId("");
+        }
+      }
+    }
+
+    loadOwnedKeys();
 
     return () => {
       cancelled = true;
@@ -470,7 +514,13 @@ export default function App() {
       const result = await runQubiqContributionFlow({
         walletAddress: wallet.address,
         slotIndex: 0,
-        desiredFaction: selectedPlot?.faction === "inphinity" ? "inphinity" : "inpinity",
+        cityKeyTokenId: selectedCityKeyTokenId ? BigInt(selectedCityKeyTokenId) : null,
+        desiredFaction:
+          wallet.chosenFaction && wallet.chosenFaction !== "none"
+            ? wallet.chosenFaction
+            : selectedPlot?.faction === "inphinity"
+            ? "inphinity"
+            : "inpinity",
         qubiqX: selectedQubiqCell.x,
         qubiqY: selectedQubiqCell.y,
         resourceEligibility,
@@ -545,6 +595,10 @@ export default function App() {
           <div className="card">
             <div className="muted">CityConfig</div>
             <strong>{cityConfigSnapshot ? "loaded" : "loading / unavailable"}</strong>
+          </div>
+          <div className="card">
+            <div className="muted">Owned City Keys</div>
+            <strong>{ownedCityKeys.length}</strong>
           </div>
           <div className="card">
             <div className="muted">Wallet Faction</div>
@@ -709,6 +763,9 @@ export default function App() {
               liveQubiq={livePlotProgress.qubiq}
               liveLoading={livePlotProgress.loading}
               liveError={livePlotProgress.error}
+              ownedCityKeys={ownedCityKeys}
+              selectedCityKeyTokenId={selectedCityKeyTokenId}
+              onSelectCityKeyTokenId={setSelectedCityKeyTokenId}
             />
           </div>
         </div>

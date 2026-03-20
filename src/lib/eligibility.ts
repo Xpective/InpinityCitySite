@@ -42,7 +42,10 @@ function getPlotFactionAllowed(
   return plot.faction === walletFaction;
 }
 
-function getFactionReason(plot: InfinityPlot, wallet: WalletState): string | null {
+function getFactionReason(
+  plot: InfinityPlot,
+  wallet: WalletState
+): string | null {
   const walletFaction = wallet.chosenFaction ?? null;
 
   if (!plot.policy.isPersonal) {
@@ -79,9 +82,17 @@ export function getPlotEligibility(
       checks: [
         { key: "plot-selected", label: "Plot selected", passed: false },
         { key: "wallet", label: "Wallet connected", passed: wallet.isConnected },
-        { key: "chain", label: "Correct chain (Base)", passed: wallet.chainId === BASE_CHAIN_ID },
+        {
+          key: "chain",
+          label: "Correct chain (Base)",
+          passed: wallet.chainId === BASE_CHAIN_ID,
+        },
         { key: "faction", label: "Faction compatible", passed: false },
-        { key: "qubiq-resources", label: "Enough resources for next Qubiq", passed: false },
+        {
+          key: "qubiq-resources",
+          label: "Enough resources for next Qubiq",
+          passed: false,
+        },
       ],
     };
   }
@@ -143,7 +154,7 @@ export function getPlotEligibility(
   }
 
   reasons.push("This panel currently checks the next Qubiq contribution, not the fully completed 5x5 plot.");
-  reasons.push("Qubiq completion is visible for preview only and remains disabled in this phase.");
+  reasons.push("Qubiq completion is live-aware, but full plot completion still depends on filling all 25 Qubiq cells.");
 
   const reservable =
     walletConnected &&
@@ -168,12 +179,20 @@ export function getPlotEligibility(
     checks: [
       { key: "plot-selected", label: "Plot selected", passed: true },
       { key: "wallet", label: "Wallet connected", passed: walletConnected },
-      { key: "chain", label: "Correct chain (Base)", passed: correctChain },
+      {
+        key: "chain",
+        label: "Correct chain (Base)",
+        passed: correctChain,
+      },
       { key: "personal", label: "Personal 5x5 plot", passed: plotKindAllowed },
       { key: "free", label: "Plot is free", passed: statusAllowed },
       { key: "faction", label: "Faction compatible", passed: factionAllowed },
-      { key: "qubiq-resources", label: "Enough resources for next Qubiq", passed: resourcesReady },
-      { key: "qubiq-live", label: "Qubiq completion live", passed: false },
+      {
+        key: "qubiq-resources",
+        label: "Enough resources for next Qubiq",
+        passed: resourcesReady,
+      },
+      { key: "qubiq-live", label: "Qubiq completion live", passed: true },
     ],
   };
 }

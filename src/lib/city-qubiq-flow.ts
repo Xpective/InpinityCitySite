@@ -72,6 +72,27 @@ export type RunQubiqFlowArgs = {
   resourceEligibility?: ResourceEligibility | null;
 };
 
+export type QubiqFlowReadiness = {
+  registry: RegistryReadState;
+  slot: Awaited<ReturnType<typeof readPersonalPlot>>;
+  approved: boolean;
+  canContribute: boolean;
+  nextCode:
+    | "needs_city_key"
+    | "needs_faction"
+    | "faction_mismatch"
+    | "reserve_plot"
+    | "needs_resource_approval"
+    | "contribute_qubiq";
+  nextLabel:
+    | "Set City Key"
+    | "Choose Faction"
+    | "Reserve Plot"
+    | "Approve Resources"
+    | "Contribute Qubiq";
+  nextMessage: string;
+};
+
 const BASE_CHAIN_ID = Number((CONFIG.chainId || 8453).toString().trim());
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -242,21 +263,82 @@ async function ensureWalletAndChain(expectedWalletAddress: string): Promise<Qubi
 export async function inspectQubiqFlowReadiness(args: {
   walletAddress: string;
   slotIndex: number;
-}): Promise<{
-  registry: RegistryReadState;
-  slot: Awaited<ReturnType<typeof readPersonalPlot>>;
-  approved: boolean;
-}> {
+  desiredFaction?: "inpinity" | "inphinity" | null;
+}): Promise<QubiqFlowReadiness> {
   const [registry, slot, approved] = await Promise.all([
     readRegistryState(args.walletAddress),
     readPersonalPlot(args.walletAddress, args.slotIndex),
     isResourceApprovedForCityLand(args.walletAddress),
   ]);
 
+  if (!registry.hasCityKey) {
+    return {
+      registry,
+      slot,
+      approved,
+      canContribute: false,
+      nextCode: "needs_city_key",
+      nextLabel: "Set City Key",
+      nextMessage: "No City Key is linked yet.",
+    };
+  }
+
+  if (registry.chosenFaction === "none") {
+    return {
+      registry,
+      slot,
+      approved,
+      canContribute: false,
+      nextCode: "needs_faction",
+      nextLabel: "Choose Faction",
+      nextMessage: "This wallet must choose a faction first.",
+    };
+  }
+
+  if (!matchesChosenFaction(registry.chosenFaction, args.desiredFaction)) {
+    return {
+      registry,
+      slot,
+      approved,
+      canContribute: false,
+      nextCode: "faction_mismatch",
+      nextLabel: "Choose Faction",
+      nextMessage: getFactionMismatchMessage(registry.chosenFaction, args.desiredFaction),
+    };
+  }
+
+  if (!slot.occupied || !slot.plotId) {
+    return {
+      registry,
+      slot,
+      approved,
+      canContribute: false,
+      nextCode: "reserve_plot",
+      nextLabel: "Reserve Plot",
+      nextMessage: "Reserve the next personal plot for this wallet.",
+    };
+  }
+
+  if (!approved) {
+    return {
+      registry,
+      slot,
+      approved,
+      canContribute: false,
+      nextCode: "needs_resource_approval",
+      nextLabel: "Approve Resources",
+      nextMessage: "CityLand needs ERC1155 approval before the first Qubiq contribution.",
+    };
+  }
+
   return {
     registry,
     slot,
     approved,
+    canContribute: true,
+    nextCode: "contribute_qubiq",
+    nextLabel: "Contribute Qubiq",
+    nextMessage: "The wallet is ready to contribute to the selected Qubiq cell.",
   };
 }
 

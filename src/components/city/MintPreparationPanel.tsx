@@ -4,6 +4,7 @@ import type { PlotEligibility, WalletState } from "../../lib/eligibility";
 import type { ResourceEligibility } from "../../lib/resource-check";
 import type { QubiqFlowResult, QubiqFlowStep } from "../../lib/city-qubiq-flow";
 import type { PlotCompletionState, QubiqReadState } from "../../lib/city-land";
+import type { CityKeyOption } from "../../lib/city-key";
 
 type Props = {
   plot: InfinityPlot | null;
@@ -30,6 +31,10 @@ type Props = {
   liveQubiq?: QubiqReadState | null;
   liveLoading?: boolean;
   liveError?: string | null;
+
+  ownedCityKeys: CityKeyOption[];
+  selectedCityKeyTokenId: string;
+  onSelectCityKeyTokenId: (tokenId: string) => void;
 };
 
 function pretty(value: string): string {
@@ -139,6 +144,8 @@ function getPrimaryAction(props: {
   flowBusy: boolean;
   flowResult: QubiqFlowResult | null;
   reservedPlotId?: string | null;
+  selectedCityKeyTokenId: string;
+  ownedCityKeys: CityKeyOption[];
 }): {
   label: string;
   helper: string;
@@ -153,6 +160,8 @@ function getPrimaryAction(props: {
     flowBusy,
     flowResult,
     reservedPlotId,
+    selectedCityKeyTokenId,
+    ownedCityKeys,
   } = props;
 
   if (flowBusy) {
@@ -235,8 +244,10 @@ function getPrimaryAction(props: {
     return {
       label: "Set City Key",
       helper:
-        "This wallet needs a City Key token before it can reserve a personal plot.",
-      disabled: false,
+        ownedCityKeys.length > 0 && selectedCityKeyTokenId
+          ? `Use NFT #${selectedCityKeyTokenId} as your City Key.`
+          : "Select one of your InpinityNFTs as City Key first.",
+      disabled: ownedCityKeys.length === 0 || !selectedCityKeyTokenId,
       action: "flow",
     };
   }
@@ -244,8 +255,7 @@ function getPrimaryAction(props: {
   if (flowResult?.code === "needs_faction") {
     return {
       label: "Choose Faction",
-      helper:
-        "A wallet must choose exactly one faction before building in the city.",
+      helper: "Choose exactly one faction for this wallet.",
       disabled: false,
       action: "flow",
     };
@@ -253,9 +263,8 @@ function getPrimaryAction(props: {
 
   if (flowResult?.code === "reservation_sent") {
     return {
-      label: "Continue After Reservation",
-      helper:
-        "The personal plot was reserved. Continue to the next live step.",
+      label: "Reserve Plot",
+      helper: "The plot is reserved. Continue to the next step.",
       disabled: false,
       action: "flow",
     };
@@ -267,8 +276,7 @@ function getPrimaryAction(props: {
   ) {
     return {
       label: "Approve Resources",
-      helper:
-        "CityLand needs ERC1155 approval before contributing Qubiq resources.",
+      helper: "CityLand needs ERC1155 approval before Qubiq contribution.",
       disabled: false,
       action: "flow",
     };
@@ -277,31 +285,44 @@ function getPrimaryAction(props: {
   if (resourceEligibility && !resourceEligibility.ready) {
     return {
       label: "Need More Resources",
-      helper:
-        "You need more Oil, Lemons, or Iron before the next Qubiq contribution.",
+      helper: "You need more Oil, Lemons, or Iron for the next Qubiq.",
       disabled: true,
       action: "none",
     };
   }
 
-  if (flowResult?.code === "contribution_sent") {
+  if (
+    flowResult?.code === "contribution_sent" ||
+    hasReservedPlotIdentity(flowResult, reservedPlotId)
+  ) {
     return {
-      label: "Contribute Next Qubiq",
-      helper:
-        "The last contribution succeeded. You can continue building the next cell.",
+      label: "Contribute Qubiq",
+      helper: "Contribute resources into the selected Qubiq cell.",
+      disabled: false,
+      action: "flow",
+    };
+  }
+
+  if (
+    wallet.chosenFaction &&
+    wallet.chosenFaction !== "none" &&
+    !hasReservedPlotIdentity(flowResult, reservedPlotId)
+  ) {
+    return {
+      label: "Reserve Plot",
+      helper: "Reserve the next personal plot for this wallet.",
       disabled: false,
       action: "flow",
     };
   }
 
   return {
-    label: hasReservedPlotIdentity(flowResult, reservedPlotId)
-      ? "Contribute Qubiq"
-      : "Reserve Plot",
-    helper: hasReservedPlotIdentity(flowResult, reservedPlotId)
-      ? "Contribute resources into the selected Qubiq cell."
-      : "Reserve the next personal plot for this wallet and begin the build flow.",
-    disabled: false,
+    label: "Set City Key",
+    helper:
+      ownedCityKeys.length > 0 && selectedCityKeyTokenId
+        ? `Use NFT #${selectedCityKeyTokenId} as your City Key.`
+        : "Select one of your InpinityNFTs as City Key first.",
+    disabled: ownedCityKeys.length === 0 || !selectedCityKeyTokenId,
     action: "flow",
   };
 }
@@ -324,6 +345,9 @@ export default function MintPreparationPanel({
   liveQubiq,
   liveLoading = false,
   liveError = null,
+  ownedCityKeys,
+  selectedCityKeyTokenId,
+  onSelectCityKeyTokenId,
 }: Props) {
   const currentQubiqs = plot?.qubiqProgress?.completed ?? 0;
   const targetQubiqs = plot?.qubiqProgress?.total ?? 25;
@@ -348,6 +372,8 @@ export default function MintPreparationPanel({
     flowBusy,
     flowResult,
     reservedPlotId,
+    selectedCityKeyTokenId,
+    ownedCityKeys,
   });
 
   const primaryOnClick =
@@ -376,7 +402,56 @@ export default function MintPreparationPanel({
             <span style={badgeStyle(flowBadgeKind)}>{getFlowLabel(flowStep)}</span>
           </div>
           <div>
+            <strong>Wallet Faction:</strong>{" "}
+            {wallet.chosenFaction && wallet.chosenFaction !== "none"
+              ? pretty(wallet.chosenFaction)
+              : "Not chosen yet"}
+          </div>
+          <div>
             <strong>Faction Rule:</strong> One wallet chooses one faction and builds only within that side. Community, Borderline and Nexus remain shared / later-governed zones.
+          </div>
+        </div>
+
+        <div style={panelBoxStyle()}>
+          <strong>City Key 🔑</strong>
+
+          <div>
+            <strong>Owned InpinityNFTs:</strong> {ownedCityKeys.length}
+          </div>
+
+          {ownedCityKeys.length > 0 ? (
+            <label style={{ display: "grid", gap: 6 }}>
+              <span>
+                <strong>Selected City Key Token</strong>
+              </span>
+              <select
+                value={selectedCityKeyTokenId}
+                onChange={(e) => onSelectCityKeyTokenId(e.target.value)}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "white",
+                }}
+              >
+                {ownedCityKeys.map((item) => (
+                  <option
+                    key={item.tokenId}
+                    value={item.tokenId}
+                    style={{ color: "black" }}
+                  >
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div>No InpinityNFT city keys found in this wallet.</div>
+          )}
+
+          <div style={{ color: "#cfd6e4" }}>
+            The selected NFT will be used as your City Key for registry setup.
           </div>
         </div>
 
@@ -646,6 +721,8 @@ export default function MintPreparationPanel({
               marginTop: 8,
             }}
           >
+            <div>• Set City Key</div>
+            <div>• Choose Faction</div>
             <div>• Reserve Plot</div>
             <div>• Approve Resources</div>
             <div>• Contribute Qubiq</div>
