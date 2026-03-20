@@ -162,6 +162,12 @@ function hasReservedPlotIdentity(
   return !!reservedPlotId || !!flowResult?.plotId;
 }
 
+function isStartedBuildPlot(plot: InfinityPlot | null, reservedPlotId?: string | null): boolean {
+  if (!plot) return false;
+  if (reservedPlotId && plot.plotId === reservedPlotId) return true;
+  return plot.status === "reserved" || plot.status === "owned";
+}
+
 function getPrimaryAction(props: {
   plot: InfinityPlot | null;
   wallet: WalletState;
@@ -189,6 +195,8 @@ function getPrimaryAction(props: {
     selectedCityKeyTokenId,
     ownedCityKeys,
   } = props;
+
+  const startedBuild = isStartedBuildPlot(plot, reservedPlotId);
 
   if (flowBusy) {
     return {
@@ -252,15 +260,6 @@ function getPrimaryAction(props: {
       label: "Plot Type Not Allowed",
       helper:
         "Only personal 5x5 plots can currently enter the private Qubiq flow.",
-      disabled: true,
-      action: "none",
-    };
-  }
-
-  if (!eligibility.statusAllowed) {
-    return {
-      label: "Plot Not Free",
-      helper: "Only free personal plots can be reserved and built.",
       disabled: true,
       action: "none",
     };
@@ -368,6 +367,16 @@ function getPrimaryAction(props: {
       helper: "You need more Oil, Lemons, or Iron for the next Qubiq.",
       disabled: true,
       action: "none",
+    };
+  }
+
+  if (startedBuild) {
+    return {
+      label: "Continue Building",
+      helper:
+        "This personal plot is already reserved or started. Continue contributing Qubiq cells.",
+      disabled: false,
+      action: "flow",
     };
   }
 

@@ -88,7 +88,11 @@ export function getPlotEligibility(
           label: "Correct chain (Base)",
           passed: wallet.chainId === BASE_CHAIN_ID,
         },
-        { key: "city-key", label: "City Key set", passed: wallet.hasCityKey === true },
+        {
+          key: "city-key",
+          label: "City Key set",
+          passed: wallet.hasCityKey === true,
+        },
         { key: "faction", label: "Faction compatible", passed: false },
         {
           key: "qubiq-resources",
@@ -108,7 +112,11 @@ export function getPlotEligibility(
   const correctChain = wallet.chainId === BASE_CHAIN_ID;
 
   const plotKindAllowed = isPersonal && !isCommunity && !isBorderline && !isNexus;
-  const statusAllowed = plot.status === "free";
+
+  const isFreePlot = plot.status === "free";
+  const isStartedPlot = plot.status === "reserved" || plot.status === "owned";
+  const statusAllowed = isFreePlot || (plotKindAllowed && isStartedPlot);
+
   const sharedZoneBlocked = !plot.policy.sharedUse;
   const factionMatchAllowed = getPlotFactionAllowed(plot, wallet);
   const factionAllowed = sharedZoneBlocked && factionMatchAllowed;
@@ -125,23 +133,33 @@ export function getPlotEligibility(
   }
 
   if (isCommunity) {
-    reasons.push("Community plots are reserved for shared infrastructure and cannot be privately completed.");
+    reasons.push(
+      "Community plots are reserved for shared infrastructure and cannot be privately completed."
+    );
   }
 
   if (isBorderline) {
-    reasons.push("Borderline plots are cooperative zones and cannot be privately completed.");
+    reasons.push(
+      "Borderline plots are cooperative zones and cannot be privately completed."
+    );
   }
 
   if (isNexus) {
-    reasons.push("Nexus plots are central reserved plots and cannot be privately completed.");
+    reasons.push(
+      "Nexus plots are central reserved plots and cannot be privately completed."
+    );
   }
 
   if (!statusAllowed) {
-    reasons.push(`This plot is not free. Current status: ${plot.status}.`);
+    reasons.push(
+      `This plot is not currently buildable. Current status: ${plot.status}.`
+    );
   }
 
   if (!sharedZoneBlocked) {
-    reasons.push("This plot belongs to a shared-use zone and is not available for personal contribution.");
+    reasons.push(
+      "This plot belongs to a shared-use zone and is not available for personal contribution."
+    );
   }
 
   if (wallet.hasCityKey === false) {
@@ -159,14 +177,18 @@ export function getPlotEligibility(
     reasons.push("Not enough farming resources for the next Qubiq contribution.");
   }
 
-  reasons.push("This panel currently checks the next Qubiq contribution, not the fully completed 5x5 plot.");
-  reasons.push("Qubiq completion is live-aware, but full plot completion still depends on filling all 25 Qubiq cells.");
+  reasons.push(
+    "This panel currently checks the next Qubiq contribution, not the fully completed 5x5 plot."
+  );
+  reasons.push(
+    "Qubiq completion is live-aware, but full plot completion still depends on filling all 25 Qubiq cells."
+  );
 
   const reservable =
     walletConnected &&
     correctChain &&
     plotKindAllowed &&
-    statusAllowed &&
+    isFreePlot &&
     factionAllowed &&
     resourcesReady;
 
@@ -196,7 +218,11 @@ export function getPlotEligibility(
         passed: wallet.hasCityKey === true,
       },
       { key: "personal", label: "Personal 5x5 plot", passed: plotKindAllowed },
-      { key: "free", label: "Plot is free", passed: statusAllowed },
+      {
+        key: "buildable",
+        label: "Plot buildable now",
+        passed: statusAllowed,
+      },
       { key: "faction", label: "Faction compatible", passed: factionAllowed },
       {
         key: "qubiq-resources",
