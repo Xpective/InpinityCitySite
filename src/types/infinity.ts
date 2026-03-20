@@ -58,7 +58,6 @@ export type InfinityPlotProvenance = {
   genesisEra?: string;
   lastUpdated?: number;
 
-  // Vorbereitete abgeleitete Werte
   legacyScore: number;
   provenanceScore: number;
   ageInDays?: number;
@@ -73,7 +72,6 @@ export type InfinityPlotStatusInfo = {
   layerEligible: boolean;
   updatedAt?: number;
 
-  // Vorbereitete abgeleitete Werte
   inactivityDays?: number;
   maintenanceAgeDays?: number;
   inactivityLevel: "fresh" | "watch" | "warning" | "critical";
@@ -90,6 +88,11 @@ export type InfinityPlotValueModel = {
   finalEstimate: number;
 };
 
+export type InfinityQubiqProgress = {
+  completed: number;
+  total: number;
+};
+
 export type InfinityPlot = {
   id: string;
   index: number;
@@ -97,7 +100,7 @@ export type InfinityPlot = {
   y: number;
   width: number;
   height: number;
-  lane: number; 
+  lane: number;
   side: InfinityRingSide;
   distanceToNexus: number;
   rarity: InfinityRarity;
@@ -110,16 +113,11 @@ export type InfinityPlot = {
   lastTransferDaysAgo?: number;
   isFavorite?: boolean;
 
-  qubiqProgress?: {
-    completed: number;
-    total: number;
-  };
+  qubiqProgress?: InfinityQubiqProgress;
 
-  // Layout / Klassifikation
   tier: InfinityPlotTier;
   policy: InfinityPlotPolicy;
 
-  // Overlay-Felder aus Subgraph / Merge
   plotId?: string;
   owner?: string;
   createdAt?: number;

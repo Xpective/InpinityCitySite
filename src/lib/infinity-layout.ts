@@ -47,6 +47,18 @@ function buildPolicy(
   };
 }
 
+function getDefaultQubiqProgress(plotKind: InfinityPlotKind) {
+  if (plotKind === "personal-5x5") {
+    return { completed: 0, total: 25 };
+  }
+
+  if (plotKind === "community-25x25" || plotKind === "borderline-25x25") {
+    return { completed: 0, total: 625 };
+  }
+
+  return { completed: 0, total: 1 };
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -196,6 +208,7 @@ function buildPersonalPlots(): InfinityPlot[] {
       plotKind,
       tier: getTier(distanceToNexus, plotKind),
       policy: buildPolicy(plotKind, faction),
+      qubiqProgress: getDefaultQubiqProgress(plotKind),
       priceEstimate: 0,
       ownerLabel:
         status === "owned"
@@ -212,7 +225,10 @@ function buildPersonalPlots(): InfinityPlot[] {
 }
 
 function buildCenterPlots(): InfinityPlot[] {
-  type CenterBasePlot = Omit<InfinityPlot, "priceEstimate" | "tier" | "policy">;
+  type CenterBasePlot = Omit<
+    InfinityPlot,
+    "priceEstimate" | "tier" | "policy" | "qubiqProgress"
+  >;
 
   const raw: CenterBasePlot[] = [
     {
@@ -625,6 +641,7 @@ function buildCenterPlots(): InfinityPlot[] {
     ...plot,
     tier: getTier(plot.distanceToNexus, plot.plotKind),
     policy: buildPolicy(plot.plotKind, plot.faction),
+    qubiqProgress: getDefaultQubiqProgress(plot.plotKind),
     priceEstimate: estimatePlotPrice(plot),
     ownerLabel: plot.status === "community" ? "Collective Reserve" : undefined,
     lastTransferDaysAgo: plot.status === "community" ? 0 : undefined,

@@ -69,6 +69,8 @@ export default function MintPreparationPanel({
   const currentQubiqs = plot?.qubiqProgress?.completed ?? 0;
   const targetQubiqs = plot?.qubiqProgress?.total ?? 25;
   const remainingQubiqs = Math.max(0, targetQubiqs - currentQubiqs);
+  const progressPercent =
+    targetQubiqs > 0 ? Math.round((currentQubiqs / targetQubiqs) * 100) : 0;
 
   return (
     <section className="panel">
@@ -138,7 +140,7 @@ export default function MintPreparationPanel({
         <div
           style={{
             display: "grid",
-            gap: 8,
+            gap: 10,
             padding: 12,
             borderRadius: 12,
             background: "rgba(255,255,255,0.035)",
@@ -158,6 +160,33 @@ export default function MintPreparationPanel({
           </div>
           <div>
             <strong>Remaining Qubiqs:</strong> {remainingQubiqs}
+          </div>
+          <div>
+            <strong>Completion:</strong> {progressPercent}%
+          </div>
+
+          <div
+            style={{
+              width: "100%",
+              height: 12,
+              borderRadius: 999,
+              overflow: "hidden",
+              background: "rgba(255,255,255,0.08)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <div
+              style={{
+                width: `${progressPercent}%`,
+                height: "100%",
+                borderRadius: 999,
+                background:
+                  progressPercent >= 100
+                    ? "linear-gradient(90deg, rgba(89,255,43,0.95), rgba(180,255,120,0.95))"
+                    : "linear-gradient(90deg, rgba(245,196,110,0.95), rgba(255,191,120,0.95))",
+                transition: "width 250ms ease",
+              }}
+            />
           </div>
         </div>
 
