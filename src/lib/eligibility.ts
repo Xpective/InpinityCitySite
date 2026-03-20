@@ -46,7 +46,7 @@ export function getPlotEligibility(
         { key: "plot-selected", label: "Plot selected", passed: false },
         { key: "wallet", label: "Wallet connected", passed: wallet.isConnected },
         { key: "chain", label: "Correct chain (Base)", passed: wallet.chainId === BASE_CHAIN_ID },
-        { key: "resources", label: "Enough resources", passed: false },
+        { key: "qubiq-resources", label: "Enough resources for next Qubiq", passed: false },
       ],
     };
   }
@@ -75,15 +75,15 @@ export function getPlotEligibility(
   }
 
   if (isCommunity) {
-    reasons.push("Community plots are reserved for shared infrastructure and cannot be privately minted.");
+    reasons.push("Community plots are reserved for shared infrastructure and cannot be privately completed.");
   }
 
   if (isBorderline) {
-    reasons.push("Borderline plots are cooperative zones and cannot be privately minted.");
+    reasons.push("Borderline plots are cooperative zones and cannot be privately completed.");
   }
 
   if (isNexus) {
-    reasons.push("Nexus plots are central reserved plots and cannot be privately minted.");
+    reasons.push("Nexus plots are central reserved plots and cannot be privately completed.");
   }
 
   if (!statusAllowed) {
@@ -91,16 +91,17 @@ export function getPlotEligibility(
   }
 
   if (!factionAllowed) {
-    reasons.push("This plot belongs to a shared-use zone and is not available for personal purchase.");
+    reasons.push("This plot belongs to a shared-use zone and is not available for personal contribution.");
   }
 
   if (!resourceEligibility) {
-    reasons.push("Resource requirement check not loaded yet.");
+    reasons.push("Qubiq cost check not loaded yet.");
   } else if (!resourcesReady) {
-    reasons.push("Not enough farming resources for this Qubiq yet.");
+    reasons.push("Not enough farming resources for the next Qubiq contribution.");
   }
 
-  reasons.push("Mint is visible for preview only and remains disabled in this phase.");
+  reasons.push("This panel currently checks the next Qubiq contribution, not the fully completed 5x5 plot.");
+  reasons.push("Qubiq completion is visible for preview only and remains disabled in this phase.");
 
   const reservable =
     walletConnected &&
@@ -129,8 +130,8 @@ export function getPlotEligibility(
       { key: "personal", label: "Personal 5x5 plot", passed: plotKindAllowed },
       { key: "free", label: "Plot is free", passed: statusAllowed },
       { key: "not-shared", label: "Not a shared-use zone", passed: factionAllowed },
-      { key: "resources", label: "Enough resources", passed: resourcesReady },
-      { key: "mint-live", label: "Mint live", passed: false },
+      { key: "qubiq-resources", label: "Enough resources for next Qubiq", passed: resourcesReady },
+      { key: "qubiq-live", label: "Qubiq completion live", passed: false },
     ],
   };
 }

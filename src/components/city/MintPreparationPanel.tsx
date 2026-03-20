@@ -66,9 +66,13 @@ export default function MintPreparationPanel({
   resourceEligibility,
   onConnectWallet,
 }: Props) {
+  const currentQubiqs = plot?.qubiqProgress?.completed ?? 0;
+  const targetQubiqs = plot?.qubiqProgress?.total ?? 25;
+  const remainingQubiqs = Math.max(0, targetQubiqs - currentQubiqs);
+
   return (
     <section className="panel">
-      <h2>Qubiq Preparation</h2>
+      <h2>Qubiq Contribution Preparation</h2>
 
       <div
         style={{
@@ -126,7 +130,7 @@ export default function MintPreparationPanel({
             <strong>Tier:</strong> {plot ? pretty(plot.tier) : "—"}
           </div>
           <div>
-            <strong>Estimated Value:</strong>{" "}
+            <strong>Estimated Plot Value:</strong>{" "}
             {plot ? `${plot.valueModel?.finalEstimate || plot.priceEstimate} PIT` : "—"}
           </div>
         </div>
@@ -141,7 +145,33 @@ export default function MintPreparationPanel({
             border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
-          <strong>Resources</strong>
+          <strong>Plot Completion Preview</strong>
+
+          <div>
+            <strong>Plot Size:</strong> 5x5
+          </div>
+          <div>
+            <strong>Target:</strong> {targetQubiqs} Qubiqs
+          </div>
+          <div>
+            <strong>Current Progress:</strong> {currentQubiqs} / {targetQubiqs}
+          </div>
+          <div>
+            <strong>Remaining Qubiqs:</strong> {remainingQubiqs}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gap: 8,
+            padding: 12,
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.035)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <strong>Qubiq Cost Check</strong>
 
           <div>
             Oil:{" "}
@@ -220,17 +250,17 @@ export default function MintPreparationPanel({
           <button
             className="toolbarButton"
             disabled={!eligibility.reservable}
-            title={eligibility.reservable ? "Reservation preview ready" : "Eligibility not met"}
+            title={eligibility.reservable ? "Qubiq contribution preview ready" : "Eligibility not met"}
           >
-            Prepare Reservation
+            Prepare Qubiq Contribution
           </button>
 
           <button
             className="toolbarButton"
             disabled
-            title="Mint is intentionally disabled in this phase"
+            title="Qubiq completion is intentionally disabled in this phase"
           >
-            Mint Qubiq (Coming Soon)
+            Complete Qubiq (Coming Soon)
           </button>
         </div>
       </div>

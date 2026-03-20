@@ -110,6 +110,11 @@ export type InfinityPlot = {
   lastTransferDaysAgo?: number;
   isFavorite?: boolean;
 
+  qubiqProgress?: {
+    completed: number;
+    total: number;
+  };
+
   // Layout / Klassifikation
   tier: InfinityPlotTier;
   policy: InfinityPlotPolicy;
