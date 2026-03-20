@@ -6,6 +6,7 @@ export type WalletState = {
   address?: string | null;
   chainId?: number | null;
   chosenFaction?: "inpinity" | "inphinity" | "none" | null;
+  hasCityKey?: boolean | null;
 };
 
 export type PlotEligibility = {
@@ -87,6 +88,7 @@ export function getPlotEligibility(
           label: "Correct chain (Base)",
           passed: wallet.chainId === BASE_CHAIN_ID,
         },
+        { key: "city-key", label: "City Key set", passed: wallet.hasCityKey === true },
         { key: "faction", label: "Faction compatible", passed: false },
         {
           key: "qubiq-resources",
@@ -142,6 +144,10 @@ export function getPlotEligibility(
     reasons.push("This plot belongs to a shared-use zone and is not available for personal contribution.");
   }
 
+  if (wallet.hasCityKey === false) {
+    reasons.push("No City Key is linked yet. Set a City Key NFT first.");
+  }
+
   const factionReason = getFactionReason(plot, wallet);
   if (factionReason) {
     reasons.push(factionReason);
@@ -183,6 +189,11 @@ export function getPlotEligibility(
         key: "chain",
         label: "Correct chain (Base)",
         passed: correctChain,
+      },
+      {
+        key: "city-key",
+        label: "City Key set",
+        passed: wallet.hasCityKey === true,
       },
       { key: "personal", label: "Personal 5x5 plot", passed: plotKindAllowed },
       { key: "free", label: "Plot is free", passed: statusAllowed },
