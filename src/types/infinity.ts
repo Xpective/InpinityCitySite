@@ -125,5 +125,5 @@ export type InfinityPlot = {
 
   provenance?: InfinityPlotProvenance;
   statusInfo?: InfinityPlotStatusInfo;
-  valueModel?: InfinityPlotValueModel;
+  valueModel?: InfinityPlotValueModel; 
 };
