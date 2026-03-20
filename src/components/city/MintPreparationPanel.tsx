@@ -2,8 +2,14 @@ import type { CSSProperties } from "react";
 import type { InfinityPlot } from "../../types/infinity";
 import type { PlotEligibility, WalletState } from "../../lib/eligibility";
 import type { ResourceEligibility } from "../../lib/resource-check";
-import type { QubiqFlowResult, QubiqFlowStep } from "../../lib/city-qubiq-flow";
-import type { PlotCompletionState, QubiqReadState } from "../../lib/city-land";
+import type {
+  QubiqFlowResult,
+  QubiqFlowStep,
+} from "../../lib/city-qubiq-flow";
+import type {
+  PlotCompletionState,
+  QubiqReadState,
+} from "../../lib/city-land";
 import type { CityKeyOption } from "../../lib/city-key";
 
 type Props = {
@@ -38,9 +44,7 @@ type Props = {
 };
 
 function pretty(value: string): string {
-  return value
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (m) => m.toUpperCase());
+  return value.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 function shortAddress(address?: string | null): string {
@@ -93,6 +97,17 @@ function panelBoxStyle(): CSSProperties {
     borderRadius: 12,
     background: "rgba(255,255,255,0.035)",
     border: "1px solid rgba(255,255,255,0.08)",
+  };
+}
+
+function selectStyle(): CSSProperties {
+  return {
+    padding: "10px 12px",
+    borderRadius: 10,
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    color: "white",
+    width: "100%",
   };
 }
 
@@ -240,7 +255,18 @@ function getPrimaryAction(props: {
     };
   }
 
-  if (!eligibility.factionAllowed || flowResult?.code === "faction_mismatch") {
+  if (flowResult?.code === "faction_mismatch") {
+    return {
+      label: "Faction Mismatch",
+      helper:
+        flowResult.message ||
+        "This wallet is already bound to another faction and cannot build on this side.",
+      disabled: true,
+      action: "none",
+    };
+  }
+
+  if (!eligibility.factionAllowed && wallet.chosenFaction && wallet.chosenFaction !== "none") {
     return {
       label: "Faction Mismatch",
       helper:
@@ -265,7 +291,8 @@ function getPrimaryAction(props: {
   if (wallet.hasCityKey && (!wallet.chosenFaction || wallet.chosenFaction === "none")) {
     return {
       label: "Choose Faction",
-      helper: "Your City Key is already set. Choose exactly one faction for this wallet.",
+      helper:
+        "Your City Key is already set. Choose exactly one faction for this wallet.",
       disabled: false,
       action: "flow",
     };
@@ -392,11 +419,7 @@ export default function MintPreparationPanel({
 
   const effectivePlotId = reservedPlotId || plot?.plotId || "—";
   const flowBadgeKind =
-    flowStep === "done"
-      ? "ok"
-      : flowStep === "error"
-      ? "bad"
-      : "neutral";
+    flowStep === "done" ? "ok" : flowStep === "error" ? "bad" : "neutral";
 
   const primaryAction = getPrimaryAction({
     plot,
@@ -443,10 +466,16 @@ export default function MintPreparationPanel({
           </div>
           <div>
             <strong>City Key:</strong>{" "}
-            {wallet.hasCityKey == null ? "Unknown" : wallet.hasCityKey ? "Set" : "Not set"}
+            {wallet.hasCityKey == null
+              ? "Unknown"
+              : wallet.hasCityKey
+              ? "Set"
+              : "Not set"}
           </div>
           <div>
-            <strong>Faction Rule:</strong> One wallet chooses one faction and builds only within that side. Community, Borderline and Nexus remain shared / later-governed zones.
+            <strong>Faction Rule:</strong> One wallet chooses one faction and
+            builds only within that side. Community, Borderline and Nexus remain
+            shared / later-governed zones.
           </div>
         </div>
 
@@ -465,13 +494,7 @@ export default function MintPreparationPanel({
               <select
                 value={selectedCityKeyTokenId}
                 onChange={(e) => onSelectCityKeyTokenId(e.target.value)}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "white",
-                }}
+                style={selectStyle()}
               >
                 {ownedCityKeys.map((item) => (
                   <option
@@ -515,7 +538,9 @@ export default function MintPreparationPanel({
           </div>
           <div>
             <strong>Estimated Plot Value:</strong>{" "}
-            {plot ? `${plot.valueModel?.finalEstimate || plot.priceEstimate} PIT` : "—"}
+            {plot
+              ? `${plot.valueModel?.finalEstimate || plot.priceEstimate} PIT`
+              : "—"}
           </div>
           <div>
             <strong>Private Build Allowed:</strong>{" "}
@@ -540,14 +565,21 @@ export default function MintPreparationPanel({
           </div>
           <div>
             <strong>Live Completion:</strong>{" "}
-            {liveCompletion ? `${liveCompletion.completionPercent}%` : `${progressPercent}%`}
+            {liveCompletion
+              ? `${liveCompletion.completionPercent}%`
+              : `${progressPercent}%`}
           </div>
           <div>
             <strong>Plot Complete:</strong>{" "}
-            {liveCompletion ? (liveCompletion.isFullyCompleted ? "Yes" : "No") : "—"}
+            {liveCompletion
+              ? liveCompletion.isFullyCompleted
+                ? "Yes"
+                : "No"
+              : "—"}
           </div>
           <div>
-            <strong>Selected Cell:</strong> ({selectedQubiqCell.x}, {selectedQubiqCell.y})
+            <strong>Selected Cell:</strong> ({selectedQubiqCell.x},{" "}
+            {selectedQubiqCell.y})
           </div>
 
           <div
@@ -585,7 +617,8 @@ export default function MintPreparationPanel({
             {Array.from({ length: 25 }).map((_, index) => {
               const x = index % 5;
               const y = Math.floor(index / 5);
-              const selected = selectedQubiqCell.x === x && selectedQubiqCell.y === y;
+              const selected =
+                selectedQubiqCell.x === x && selectedQubiqCell.y === y;
 
               return (
                 <button
@@ -623,7 +656,8 @@ export default function MintPreparationPanel({
           {!liveLoading && !liveError && (
             <>
               <div>
-                <strong>Cell:</strong> ({selectedQubiqCell.x}, {selectedQubiqCell.y})
+                <strong>Cell:</strong> ({selectedQubiqCell.x},{" "}
+                {selectedQubiqCell.y})
               </div>
               <div>
                 <strong>State:</strong> {getQubiqStateLabel(liveQubiq)}
@@ -689,7 +723,9 @@ export default function MintPreparationPanel({
           {resourceEligibility && !resourceEligibility.ready && (
             <>
               <div>Missing Oil: {resourceEligibility.missing.oil.toString()}</div>
-              <div>Missing Lemons: {resourceEligibility.missing.lemons.toString()}</div>
+              <div>
+                Missing Lemons: {resourceEligibility.missing.lemons.toString()}
+              </div>
               <div>Missing Iron: {resourceEligibility.missing.iron.toString()}</div>
             </>
           )}
@@ -700,7 +736,10 @@ export default function MintPreparationPanel({
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {eligibility.checks.map((check) => (
-              <span key={check.key} style={badgeStyle(check.passed ? "ok" : "bad")}>
+              <span
+                key={check.key}
+                style={badgeStyle(check.passed ? "ok" : "bad")}
+              >
                 {check.passed ? "✓" : "✗"} {check.label}
               </span>
             ))}
@@ -749,7 +788,9 @@ export default function MintPreparationPanel({
             <div>
               <strong>Current Action:</strong> {primaryAction.label}
             </div>
-            <div style={{ marginTop: 4, color: "#cfd6e4" }}>{primaryAction.helper}</div>
+            <div style={{ marginTop: 4, color: "#cfd6e4" }}>
+              {primaryAction.helper}
+            </div>
           </div>
 
           <div
