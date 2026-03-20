@@ -19,7 +19,10 @@ const MID_COMMUNITY_SIZE = 42;
 const BORDERLINE_SIZE = 34;
 const NEUTRAL_SIZE = 34;
 
-function getTier(distanceToNexus: number, plotKind: InfinityPlotKind): InfinityPlotTier {
+function getTier(
+  distanceToNexus: number,
+  plotKind: InfinityPlotKind
+): InfinityPlotTier {
   if (plotKind === "nexus") return "nexus";
   if (distanceToNexus <= 120) return "inner";
   if (distanceToNexus <= 260) return "mid";
@@ -41,8 +44,9 @@ function buildPolicy(
     isBorderline,
     isNexus,
     reservable: isPersonal,
-    purchasable: isPersonal,
-    factionLocked: isPersonal && (faction === "inpinity" || faction === "inphinity"),
+    purchasable: false,
+    factionLocked:
+      isPersonal && (faction === "inpinity" || faction === "inphinity"),
     sharedUse: isCommunity || isBorderline || isNexus,
   };
 }
@@ -52,7 +56,10 @@ function getDefaultQubiqProgress(plotKind: InfinityPlotKind) {
     return { completed: 0, total: 25 };
   }
 
-  if (plotKind === "community-25x25" || plotKind === "borderline-25x25") {
+  if (
+    plotKind === "community-25x25" ||
+    plotKind === "borderline-25x25"
+  ) {
     return { completed: 0, total: 625 };
   }
 
@@ -63,7 +70,12 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function distance(ax: number, ay: number, bx: number, by: number): number {
+function distance(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number
+): number {
   return Math.hypot(ax - bx, ay - by);
 }
 
@@ -71,15 +83,20 @@ function getLemniscatePoint(t: number) {
   const scale = 330;
   const x = (scale * Math.cos(t)) / (1 + Math.sin(t) * Math.sin(t));
   const y =
-    ((scale * Math.sin(t) * Math.cos(t)) / (1 + Math.sin(t) * Math.sin(t))) * 0.8;
-  return { x: CENTER_X + x, y: CENTER_Y + y };
+    ((scale * Math.sin(t) * Math.cos(t)) / (1 + Math.sin(t) * Math.sin(t))) *
+    0.8;
+
+  return {
+    x: CENTER_X + x,
+    y: CENTER_Y + y,
+  };
 }
 
 export function getInfinityPath(): string {
   const steps = 280;
   let path = "";
 
-  for (let i = 0; i <= steps; i++) {
+  for (let i = 0; i <= steps; i += 1) {
     const t = (Math.PI * 2 * i) / steps;
     const p = getLemniscatePoint(t);
     path += i === 0 ? `M ${p.x} ${p.y}` : ` L ${p.x} ${p.y}`;
@@ -145,7 +162,8 @@ export function estimatePlotPrice(
       : 4.2;
 
   const laneBoost = 1 + plot.lane * 0.22;
-  const nexusBoost = 1 + clamp((320 - plot.distanceToNexus) / 320, 0, 1) * 0.8;
+  const nexusBoost =
+    1 + clamp((320 - plot.distanceToNexus) / 320, 0, 1) * 0.8;
 
   return Math.round(base * rarityBoost * laneBoost * nexusBoost);
 }
@@ -159,9 +177,7 @@ function getRarityByDistance(distanceToNexus: number): InfinityRarity {
   return "common";
 }
 
-function getStatusByIndex(i: number): InfinityPlotStatus {
-  if (i % 17 === 0) return "owned";
-  if (i % 11 === 0) return "reserved";
+function getMockStatusByIndex(i: number): InfinityPlotStatus {
   if (i % 29 === 0) return "locked";
   return "free";
 }
@@ -171,7 +187,7 @@ function buildPersonalPlots(): InfinityPlot[] {
   const steps = 240;
   let created = 0;
 
-  for (let i = 0; i < steps; i++) {
+  for (let i = 0; i < steps; i += 1) {
     const t = (Math.PI * 2 * i) / steps;
     const anchor = getLemniscatePoint(t);
 
@@ -179,14 +195,20 @@ function buildPersonalPlots(): InfinityPlot[] {
     const x = anchor.x + Math.cos(t + Math.PI / 2) * ringOffset;
     const y = anchor.y + Math.sin(t + Math.PI / 2) * ringOffset;
 
-    const side = x < CENTER_X - 30 ? "left" : x > CENTER_X + 30 ? "right" : "center";
+    const side =
+      x < CENTER_X - 30 ? "left" : x > CENTER_X + 30 ? "right" : "center";
+
     if (side === "center") continue;
 
     const distanceToNexus = distance(x, y, CENTER_X, CENTER_Y);
     const rarity = getRarityByDistance(distanceToNexus);
-    const faction: InfinityFaction = side === "left" ? "inpinity" : "inphinity";
-    const lane = Math.max(1, Math.round((1 - clamp(distanceToNexus / 360, 0, 1)) * 6));
-    const status = getStatusByIndex(i);
+    const faction: InfinityFaction =
+      side === "left" ? "inpinity" : "inphinity";
+    const lane = Math.max(
+      1,
+      Math.round((1 - clamp(distanceToNexus / 360, 0, 1)) * 6)
+    );
+    const status = getMockStatusByIndex(i);
     const plotKind: InfinityPlotKind = "personal-5x5";
 
     created += 1;
@@ -210,11 +232,8 @@ function buildPersonalPlots(): InfinityPlot[] {
       policy: buildPolicy(plotKind, faction),
       qubiqProgress: getDefaultQubiqProgress(plotKind),
       priceEstimate: 0,
-      ownerLabel:
-        status === "owned"
-          ? `0x${(1200 + created).toString(16)}...${(8800 + created).toString(16)}`
-          : undefined,
-      lastTransferDaysAgo: status === "owned" ? (created % 90) + 3 : undefined,
+      ownerLabel: undefined,
+      lastTransferDaysAgo: undefined,
     };
 
     plot.priceEstimate = estimatePlotPrice(plot);
@@ -644,7 +663,7 @@ function buildCenterPlots(): InfinityPlot[] {
     qubiqProgress: getDefaultQubiqProgress(plot.plotKind),
     priceEstimate: estimatePlotPrice(plot),
     ownerLabel: plot.status === "community" ? "Collective Reserve" : undefined,
-    lastTransferDaysAgo: plot.status === "community" ? 0 : undefined,
+    lastTransferDaysAgo: undefined,
   }));
 }
 

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import {
+  getAllPlotQubiqStates,
   getPlotCompletionState,
   getQubiq,
   type PlotCompletionState,
+  type PlotQubiqMap,
   type QubiqReadState,
 } from "../lib/city-land";
 
@@ -11,6 +13,7 @@ type State = {
   error: string | null;
   completion: PlotCompletionState | null;
   qubiq: QubiqReadState | null;
+  allQubiqs: PlotQubiqMap;
 };
 
 function normalizePlotId(plotId: string | null | undefined): bigint | null {
@@ -26,6 +29,18 @@ function normalizePlotId(plotId: string | null | undefined): bigint | null {
   }
 }
 
+function emptyQubiqMap(): PlotQubiqMap {
+  const map: PlotQubiqMap = {};
+
+  for (let index = 0; index < 25; index += 1) {
+    const x = index % 5;
+    const y = Math.floor(index / 5);
+    map[`${x},${y}`] = null;
+  }
+
+  return map;
+}
+
 export function useLivePlotProgress(
   plotId?: string | null,
   cell?: { x: number; y: number } | null,
@@ -36,6 +51,7 @@ export function useLivePlotProgress(
     error: null,
     completion: null,
     qubiq: null,
+    allQubiqs: emptyQubiqMap(),
   });
 
   useEffect(() => {
@@ -50,6 +66,7 @@ export function useLivePlotProgress(
           error: null,
           completion: null,
           qubiq: null,
+          allQubiqs: emptyQubiqMap(),
         });
         return;
       }
@@ -62,13 +79,15 @@ export function useLivePlotProgress(
 
       try {
         const completionPromise = getPlotCompletionState(normalizedPlotId);
+        const allQubiqsPromise = getAllPlotQubiqStates(normalizedPlotId);
         const qubiqPromise =
           cell != null
             ? getQubiq(normalizedPlotId, cell.x, cell.y)
             : Promise.resolve(null);
 
-        const [completion, qubiq] = await Promise.all([
+        const [completion, allQubiqs, qubiq] = await Promise.all([
           completionPromise,
+          allQubiqsPromise,
           qubiqPromise,
         ]);
 
@@ -79,6 +98,7 @@ export function useLivePlotProgress(
           error: null,
           completion,
           qubiq,
+          allQubiqs,
         });
       } catch (error) {
         if (cancelled) return;
@@ -88,6 +108,7 @@ export function useLivePlotProgress(
           error: error instanceof Error ? error.message : "Live plot read failed.",
           completion: null,
           qubiq: null,
+          allQubiqs: emptyQubiqMap(),
         });
       }
     }

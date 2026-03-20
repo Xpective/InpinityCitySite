@@ -55,8 +55,17 @@ type SelectedQubiqCell = {
   y: number;
 };
 
+type BuildPlotOption = {
+  plotId: string;
+  label: string;
+};
+
 function normalize(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function normalizeAddress(value?: string | null): string {
+  return (value || "").trim().toLowerCase();
 }
 
 function downloadMapPng(): void {
@@ -124,6 +133,13 @@ function matchesSpecial(
   }
 }
 
+function buildPlotOptionLabel(plot: InfinityPlot): string {
+  const idPart = plot.plotId ? `#${plot.plotId}` : plot.label;
+  const factionPart = plot.faction ? ` · ${plot.faction}` : "";
+  const statusPart = plot.status ? ` · ${plot.status}` : "";
+  return `${idPart}${factionPart}${statusPart}`;
+}
+
 export default function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [jumpTarget, setJumpTarget] = useState("");
@@ -149,8 +165,10 @@ export default function App() {
   const [ownedCityKeys, setOwnedCityKeys] = useState<CityKeyOption[]>([]);
   const [selectedCityKeyTokenId, setSelectedCityKeyTokenId] = useState<string>("");
 
-  const [cityConfigSnapshot, setCityConfigSnapshot] = useState<CityConfigSnapshot | null>(null);
-  const [resourceEligibility, setResourceEligibility] = useState<ResourceEligibility | null>(null);
+  const [cityConfigSnapshot, setCityConfigSnapshot] =
+    useState<CityConfigSnapshot | null>(null);
+  const [resourceEligibility, setResourceEligibility] =
+    useState<ResourceEligibility | null>(null);
 
   const [dashboard, setDashboard] = useState<DashboardQueryResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -158,26 +176,17 @@ export default function App() {
   const [retryCount, setRetryCount] = useState(0);
 
   const [reservedPlotId, setReservedPlotId] = useState<string | null>(null);
+  const [activeBuildPlotId, setActiveBuildPlotId] = useState<string>("");
+
   const [selectedQubiqCell, setSelectedQubiqCell] = useState<SelectedQubiqCell>({
     x: 0,
     y: 0,
   });
+
   const [txStep, setTxStep] = useState<QubiqFlowStep>("idle");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [flowResult, setFlowResult] = useState<QubiqFlowResult | null>(null);
   const [flowBusy, setFlowBusy] = useState(false);
-
-  const activePlotId = useMemo(() => {
-    if (reservedPlotId) return reservedPlotId;
-    if (selectedPlot?.plotId) return selectedPlot.plotId;
-    return null;
-  }, [reservedPlotId, selectedPlot]);
-
-  const livePlotProgress = useLivePlotProgress(
-    activePlotId,
-    selectedQubiqCell,
-    retryCount
-  );
 
   useEffect(() => {
     setFavoriteIds(getFavoritePlotIds());
@@ -350,6 +359,88 @@ export default function App() {
     };
   }, [wallet.isConnected, wallet.address, retryCount]);
 
+  const basePlots = useMemo(() => {
+    return generateInfinityPlots();
+  }, []);
+
+  const hydratedPlots = useMemo(() => {
+    return hydratePlots(basePlots, dashboard || {});
+  }, [basePlots, dashboard]);
+
+  const buildPlotOptions = useMemo<BuildPlotOption[]>(() => {
+    const walletAddress = normalizeAddress(wallet.address);
+    const optionsMap = new Map<string, BuildPlotOption>();
+
+    for (const plot of hydratedPlots) {
+      const plotId = (plot.plotId || "").trim();
+      if (!plotId) continue;
+
+      const isReservedByFlow = reservedPlotId === plotId;
+      const isOwnedByWallet =
+        !!walletAddress &&
+        normalizeAddress(plot.owner) === walletAddress;
+
+      const looksLikeStartedPlot =
+        isReservedByFlow ||
+        isOwnedByWallet ||
+        plot.status === "reserved" ||
+        plot.status === "owned";
+
+      if (!looksLikeStartedPlot) continue;
+
+      optionsMap.set(plotId, {
+        plotId,
+        label: buildPlotOptionLabel(plot),
+      });
+    }
+
+    if (reservedPlotId && !optionsMap.has(reservedPlotId)) {
+      optionsMap.set(reservedPlotId, {
+        plotId: reservedPlotId,
+        label: `#${reservedPlotId} · active build`,
+      });
+    }
+
+    return Array.from(optionsMap.values());
+  }, [hydratedPlots, wallet.address, reservedPlotId]);
+
+  useEffect(() => {
+    if (reservedPlotId) {
+      setActiveBuildPlotId(reservedPlotId);
+      return;
+    }
+
+    if (
+      activeBuildPlotId &&
+      buildPlotOptions.some((item) => item.plotId === activeBuildPlotId)
+    ) {
+      return;
+    }
+
+    setActiveBuildPlotId(buildPlotOptions[0]?.plotId || "");
+  }, [reservedPlotId, buildPlotOptions, activeBuildPlotId]);
+
+  const activePlotId = useMemo(() => {
+    if (activeBuildPlotId) return activeBuildPlotId;
+    if (reservedPlotId) return reservedPlotId;
+    if (selectedPlot?.plotId) return selectedPlot.plotId;
+    return null;
+  }, [activeBuildPlotId, reservedPlotId, selectedPlot]);
+
+  const activeBuildPlot = useMemo(() => {
+    if (!activePlotId) return null;
+    return (
+      hydratedPlots.find((plot) => String(plot.plotId || "") === String(activePlotId)) ||
+      null
+    );
+  }, [hydratedPlots, activePlotId]);
+
+  const livePlotProgress = useLivePlotProgress(
+    activePlotId,
+    selectedQubiqCell,
+    retryCount
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -367,7 +458,12 @@ export default function App() {
 
         setCityConfigSnapshot(snapshot);
 
-        const evaluated = evaluateResourceEligibility(selectedPlot, balances, snapshot);
+        const evaluated = evaluateResourceEligibility(
+          activeBuildPlot || selectedPlot,
+          balances,
+          snapshot
+        );
+
         setResourceEligibility(evaluated);
       } catch (err) {
         console.warn("Resource check failed:", err);
@@ -383,7 +479,74 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [wallet, selectedPlot, retryCount]);
+  }, [wallet, activeBuildPlot, selectedPlot, retryCount]);
+
+  const filteredPlots = useMemo(() => {
+    const term = normalize(searchTerm);
+
+    return hydratedPlots.filter((plot) => {
+      if (!matchesSearch(plot, term)) return false;
+      if (!matchesAvailability(plot, availabilityFilter)) return false;
+      if (!matchesSpecial(plot, specialFilter, favoriteIds)) return false;
+      return true;
+    });
+  }, [hydratedPlots, searchTerm, availabilityFilter, specialFilter, favoriteIds]);
+
+  const effectiveSelectedPlot = activeBuildPlot || selectedPlot;
+
+  const eligibility = useMemo(() => {
+    return getPlotEligibility(effectiveSelectedPlot, wallet, resourceEligibility);
+  }, [effectiveSelectedPlot, wallet, resourceEligibility]);
+
+  useEffect(() => {
+    if (!selectedPlot) return;
+
+    const refreshed = hydratedPlots.find((plot) => plot.id === selectedPlot.id);
+    if (refreshed && refreshed !== selectedPlot) {
+      setSelectedPlot(refreshed);
+    }
+  }, [hydratedPlots, selectedPlot]);
+
+  function handleToggleFavorite(id: string): void {
+    const next = toggleFavoritePlot(id);
+    setFavoriteIds(next);
+  }
+
+  function handleJumpToPlot(rawValue: string): void {
+    const term = normalize(rawValue);
+    if (!term) return;
+
+    const found = hydratedPlots.find((plot) => {
+      const label = normalize(plot.label);
+      const plotId = normalize(plot.plotId || "");
+      const owner = normalize(plot.owner || "");
+      const ownerLabel = normalize(plot.ownerLabel || "");
+
+      return (
+        label === term ||
+        plotId === term ||
+        owner === term ||
+        ownerLabel === term ||
+        label.includes(term) ||
+        plotId.includes(term) ||
+        owner.includes(term) ||
+        ownerLabel.includes(term)
+      );
+    });
+
+    if (found) {
+      setSelectedPlot(found);
+
+      if (
+        found.plotId &&
+        buildPlotOptions.some((item) => item.plotId === found.plotId)
+      ) {
+        setActiveBuildPlotId(found.plotId);
+      }
+
+      setSearchTerm(found.label);
+    }
+  }
 
   const handleRetry = (): void => {
     setRetryCount((prev) => prev + 1);
@@ -439,71 +602,6 @@ export default function App() {
     };
   }, [dashboard]);
 
-  const basePlots = useMemo(() => {
-    return generateInfinityPlots();
-  }, []);
-
-  const hydratedPlots = useMemo(() => {
-    return hydratePlots(basePlots, dashboard || {});
-  }, [basePlots, dashboard]);
-
-  const filteredPlots = useMemo(() => {
-    const term = normalize(searchTerm);
-
-    return hydratedPlots.filter((plot) => {
-      if (!matchesSearch(plot, term)) return false;
-      if (!matchesAvailability(plot, availabilityFilter)) return false;
-      if (!matchesSpecial(plot, specialFilter, favoriteIds)) return false;
-      return true;
-    });
-  }, [hydratedPlots, searchTerm, availabilityFilter, specialFilter, favoriteIds]);
-
-  const eligibility = useMemo(() => {
-    return getPlotEligibility(selectedPlot, wallet, resourceEligibility);
-  }, [selectedPlot, wallet, resourceEligibility]);
-
-  useEffect(() => {
-    if (!selectedPlot) return;
-
-    const refreshed = hydratedPlots.find((plot) => plot.id === selectedPlot.id);
-    if (refreshed && refreshed !== selectedPlot) {
-      setSelectedPlot(refreshed);
-    }
-  }, [hydratedPlots, selectedPlot]);
-
-  function handleToggleFavorite(id: string): void {
-    const next = toggleFavoritePlot(id);
-    setFavoriteIds(next);
-  }
-
-  function handleJumpToPlot(rawValue: string): void {
-    const term = normalize(rawValue);
-    if (!term) return;
-
-    const found = hydratedPlots.find((plot) => {
-      const label = normalize(plot.label);
-      const plotId = normalize(plot.plotId || "");
-      const owner = normalize(plot.owner || "");
-      const ownerLabel = normalize(plot.ownerLabel || "");
-
-      return (
-        label === term ||
-        plotId === term ||
-        owner === term ||
-        ownerLabel === term ||
-        label.includes(term) ||
-        plotId.includes(term) ||
-        owner.includes(term) ||
-        ownerLabel.includes(term)
-      );
-    });
-
-    if (found) {
-      setSelectedPlot(found);
-      setSearchTerm(found.label);
-    }
-  }
-
   async function handlePrepareQubiqContribution(): Promise<void> {
     if (!wallet.address) {
       await handleConnectWallet();
@@ -519,11 +617,13 @@ export default function App() {
       const result = await runQubiqContributionFlow({
         walletAddress: wallet.address,
         slotIndex: 0,
-        cityKeyTokenId: selectedCityKeyTokenId ? BigInt(selectedCityKeyTokenId) : null,
+        cityKeyTokenId: selectedCityKeyTokenId
+          ? BigInt(selectedCityKeyTokenId)
+          : null,
         desiredFaction:
           wallet.chosenFaction && wallet.chosenFaction !== "none"
             ? wallet.chosenFaction
-            : selectedPlot?.faction === "inphinity"
+            : effectiveSelectedPlot?.faction === "inphinity"
             ? "inphinity"
             : "inpinity",
         qubiqX: selectedQubiqCell.x,
@@ -539,7 +639,9 @@ export default function App() {
       }
 
       if (result.plotId != null) {
-        setReservedPlotId(result.plotId.toString());
+        const nextPlotId = result.plotId.toString();
+        setReservedPlotId(nextPlotId);
+        setActiveBuildPlotId(nextPlotId);
       }
 
       if (
@@ -604,7 +706,11 @@ export default function App() {
           <div className="card">
             <div className="muted">City Key</div>
             <strong>
-              {wallet.hasCityKey == null ? "unknown" : wallet.hasCityKey ? "set" : "not set"}
+              {wallet.hasCityKey == null
+                ? "unknown"
+                : wallet.hasCityKey
+                ? "set"
+                : "not set"}
             </strong>
           </div>
           <div className="card">
@@ -621,7 +727,7 @@ export default function App() {
           </div>
         </div>
 
-        {(reservedPlotId || txHash) && (
+        {(reservedPlotId || txHash || activeBuildPlotId) && (
           <div
             style={{
               marginTop: 14,
@@ -633,9 +739,19 @@ export default function App() {
               border: "1px solid rgba(255,255,255,0.08)",
             }}
           >
-            <div><strong>Reserved Plot ID:</strong> {reservedPlotId || "—"}</div>
-            <div><strong>Selected Qubiq Cell:</strong> ({selectedQubiqCell.x}, {selectedQubiqCell.y})</div>
-            <div><strong>Latest TX:</strong> {txHash || "—"}</div>
+            <div>
+              <strong>Reserved Plot ID:</strong> {reservedPlotId || "—"}
+            </div>
+            <div>
+              <strong>Active Build Plot ID:</strong> {activeBuildPlotId || "—"}
+            </div>
+            <div>
+              <strong>Selected Qubiq Cell:</strong> ({selectedQubiqCell.x},{" "}
+              {selectedQubiqCell.y})
+            </div>
+            <div>
+              <strong>Latest TX:</strong> {txHash || "—"}
+            </div>
           </div>
         )}
       </section>
@@ -741,7 +857,16 @@ export default function App() {
               <InfinityMap
                 plots={filteredPlots}
                 selectedPlot={selectedPlot}
-                onSelectPlot={setSelectedPlot}
+                onSelectPlot={(plot) => {
+                  setSelectedPlot(plot);
+
+                  if (
+                    plot.plotId &&
+                    buildPlotOptions.some((item) => item.plotId === plot.plotId)
+                  ) {
+                    setActiveBuildPlotId(plot.plotId);
+                  }
+                }}
                 showLabels={showLabels}
                 heatmapMode={heatmapMode}
               />
@@ -752,12 +877,12 @@ export default function App() {
 
           <div style={{ display: "grid", gap: 20 }}>
             <PlotDetails
-              plot={selectedPlot}
+              plot={effectiveSelectedPlot}
               onToggleFavorite={handleToggleFavorite}
             />
 
             <MintPreparationPanel
-              plot={selectedPlot}
+              plot={effectiveSelectedPlot}
               wallet={wallet}
               eligibility={eligibility}
               resourceEligibility={resourceEligibility}
@@ -772,11 +897,15 @@ export default function App() {
               txHash={txHash}
               liveCompletion={livePlotProgress.completion}
               liveQubiq={livePlotProgress.qubiq}
+              liveAllQubiqs={livePlotProgress.allQubiqs}
               liveLoading={livePlotProgress.loading}
               liveError={livePlotProgress.error}
               ownedCityKeys={ownedCityKeys}
               selectedCityKeyTokenId={selectedCityKeyTokenId}
               onSelectCityKeyTokenId={setSelectedCityKeyTokenId}
+              buildPlotOptions={buildPlotOptions}
+              activeBuildPlotId={activeBuildPlotId}
+              onSelectActiveBuildPlotId={setActiveBuildPlotId}
             />
           </div>
         </div>
@@ -791,7 +920,8 @@ export default function App() {
         </p>
         <p style={{ marginBottom: 0 }}>
           Next step: upgrade MintPreparationPanel into a real build terminal with
-          action sections, approval state, flow messaging, and Qubiq cell control.
+          action sections, approval state, flow messaging, active build plot
+          selection, and Qubiq cell control.
         </p>
       </section>
     </div>

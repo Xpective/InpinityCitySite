@@ -8,9 +8,15 @@ import type {
 } from "../../lib/city-qubiq-flow";
 import type {
   PlotCompletionState,
+  PlotQubiqMap,
   QubiqReadState,
 } from "../../lib/city-land";
 import type { CityKeyOption } from "../../lib/city-key";
+
+type BuildPlotOption = {
+  plotId: string;
+  label: string;
+};
 
 type Props = {
   plot: InfinityPlot | null;
@@ -35,12 +41,17 @@ type Props = {
 
   liveCompletion?: PlotCompletionState | null;
   liveQubiq?: QubiqReadState | null;
+  liveAllQubiqs?: PlotQubiqMap;
   liveLoading?: boolean;
   liveError?: string | null;
 
   ownedCityKeys: CityKeyOption[];
   selectedCityKeyTokenId: string;
   onSelectCityKeyTokenId: (tokenId: string) => void;
+
+  buildPlotOptions: BuildPlotOption[];
+  activeBuildPlotId: string;
+  onSelectActiveBuildPlotId: (plotId: string) => void;
 };
 
 function pretty(value: string): string {
@@ -266,7 +277,11 @@ function getPrimaryAction(props: {
     };
   }
 
-  if (!eligibility.factionAllowed && wallet.chosenFaction && wallet.chosenFaction !== "none") {
+  if (
+    !eligibility.factionAllowed &&
+    wallet.chosenFaction &&
+    wallet.chosenFaction !== "none"
+  ) {
     return {
       label: "Faction Mismatch",
       helper:
@@ -288,7 +303,10 @@ function getPrimaryAction(props: {
     };
   }
 
-  if (wallet.hasCityKey && (!wallet.chosenFaction || wallet.chosenFaction === "none")) {
+  if (
+    wallet.hasCityKey &&
+    (!wallet.chosenFaction || wallet.chosenFaction === "none")
+  ) {
     return {
       label: "Choose Faction",
       helper:
@@ -388,6 +406,82 @@ function getPrimaryAction(props: {
   };
 }
 
+function getCellStyle(args: {
+  selected: boolean;
+  qubiq: QubiqReadState | null;
+}): CSSProperties {
+  const { selected, qubiq } = args;
+
+  if (selected) {
+    return {
+      padding: "8px 0",
+      borderRadius: 8,
+      border: "1px solid rgba(255,255,255,0.95)",
+      background: "rgba(245,196,110,0.28)",
+      color: "white",
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 700,
+    };
+  }
+
+  if (qubiq?.visualState === "aether-complete") {
+    return {
+      padding: "8px 0",
+      borderRadius: 8,
+      border: "1px solid rgba(255,215,0,0.5)",
+      background: "rgba(255,215,0,0.18)",
+      color: "#ffeeb0",
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 700,
+    };
+  }
+
+  if (qubiq?.usedAether || qubiq?.completed || qubiq?.visualState === "complete") {
+    return {
+      padding: "8px 0",
+      borderRadius: 8,
+      border: "1px solid rgba(89,255,43,0.5)",
+      background: "rgba(89,255,43,0.18)",
+      color: "#cfffbe",
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 700,
+    };
+  }
+
+  if (qubiq?.visualState === "in-progress") {
+    return {
+      padding: "8px 0",
+      borderRadius: 8,
+      border: "1px solid rgba(120,160,255,0.4)",
+      background: "rgba(120,160,255,0.14)",
+      color: "#d8e3ff",
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 700,
+    };
+  }
+
+  return {
+    padding: "8px 0",
+    borderRadius: 8,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.05)",
+    color: "white",
+    cursor: "pointer",
+    fontSize: 12,
+  };
+}
+
+function getCellText(qubiq: QubiqReadState | null, x: number, y: number): string {
+  if (qubiq?.visualState === "aether-complete") return "✦";
+  if (qubiq?.usedAether || qubiq?.completed || qubiq?.visualState === "complete") return "✓";
+  if (qubiq?.visualState === "in-progress") return "•";
+  return `${x},${y}`;
+}
+
 export default function MintPreparationPanel({
   plot,
   wallet,
@@ -404,20 +498,31 @@ export default function MintPreparationPanel({
   txHash,
   liveCompletion,
   liveQubiq,
+  liveAllQubiqs,
   liveLoading = false,
   liveError = null,
   ownedCityKeys,
   selectedCityKeyTokenId,
   onSelectCityKeyTokenId,
+  buildPlotOptions,
+  activeBuildPlotId,
+  onSelectActiveBuildPlotId,
 }: Props) {
-  const currentQubiqs = plot?.qubiqProgress?.completed ?? 0;
-  const targetQubiqs = plot?.qubiqProgress?.total ?? 25;
+  const targetQubiqs = 25;
+
+  const currentQubiqs =
+    liveCompletion?.completedQubiqs ??
+    plot?.qubiqProgress?.completed ??
+    0;
+
   const remainingQubiqs = Math.max(0, targetQubiqs - currentQubiqs);
+
   const progressPercent =
     liveCompletion?.completionPercent ??
-    (targetQubiqs > 0 ? Math.round((currentQubiqs / targetQubiqs) * 100) : 0);
+    Math.round((currentQubiqs / targetQubiqs) * 100);
 
-  const effectivePlotId = reservedPlotId || plot?.plotId || "—";
+  const effectivePlotId = activeBuildPlotId || reservedPlotId || plot?.plotId || "—";
+
   const flowBadgeKind =
     flowStep === "done" ? "ok" : flowStep === "error" ? "bad" : "neutral";
 
@@ -517,6 +622,39 @@ export default function MintPreparationPanel({
         </div>
 
         <div style={panelBoxStyle()}>
+          <strong>Active Build Plot</strong>
+
+          {buildPlotOptions.length > 0 ? (
+            <label style={{ display: "grid", gap: 6 }}>
+              <span>
+                <strong>Choose reserved / active plot</strong>
+              </span>
+              <select
+                value={activeBuildPlotId}
+                onChange={(e) => onSelectActiveBuildPlotId(e.target.value)}
+                style={selectStyle()}
+              >
+                {buildPlotOptions.map((item) => (
+                  <option
+                    key={item.plotId}
+                    value={item.plotId}
+                    style={{ color: "black" }}
+                  >
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div>No reserved or active personal plots detected yet.</div>
+          )}
+
+          <div style={{ color: "#cfd6e4" }}>
+            Use this selector to continue building on a plot you already reserved or started.
+          </div>
+        </div>
+
+        <div style={panelBoxStyle()}>
           <strong>Plot Status</strong>
           <div>
             <strong>Selected Plot:</strong> {plot?.label || "—"}
@@ -555,10 +693,7 @@ export default function MintPreparationPanel({
             <strong>Plot Size:</strong> 5x5
           </div>
           <div>
-            <strong>Target:</strong> {targetQubiqs} Qubiqs
-          </div>
-          <div>
-            <strong>Mock Progress:</strong> {currentQubiqs} / {targetQubiqs}
+            <strong>Completed Qubiqs:</strong> {currentQubiqs} / {targetQubiqs}
           </div>
           <div>
             <strong>Remaining Qubiqs:</strong> {remainingQubiqs}
@@ -619,31 +754,38 @@ export default function MintPreparationPanel({
               const y = Math.floor(index / 5);
               const selected =
                 selectedQubiqCell.x === x && selectedQubiqCell.y === y;
+              const key = `${x},${y}`;
+              const qubiq = liveAllQubiqs?.[key] ?? null;
 
               return (
                 <button
-                  key={`${x}-${y}`}
+                  key={key}
                   type="button"
                   onClick={() => onSelectQubiqCell({ x, y })}
-                  style={{
-                    padding: "8px 0",
-                    borderRadius: 8,
-                    border: selected
-                      ? "1px solid rgba(255,255,255,0.9)"
-                      : "1px solid rgba(255,255,255,0.12)",
-                    background: selected
-                      ? "rgba(245,196,110,0.22)"
-                      : "rgba(255,255,255,0.05)",
-                    color: "white",
-                    cursor: "pointer",
-                    fontSize: 12,
-                  }}
-                  title={`Qubiq (${x}, ${y})`}
+                  style={getCellStyle({ selected, qubiq })}
+                  title={`Qubiq (${x}, ${y})${
+                    qubiq ? ` – ${getQubiqStateLabel(qubiq)}` : ""
+                  }`}
                 >
-                  {x},{y}
+                  {getCellText(qubiq, x, y)}
                 </button>
               );
             })}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+              marginTop: 8,
+              fontSize: 12,
+              color: "#cfd6e4",
+            }}
+          >
+            <span>✓ complete</span>
+            <span>✦ aether</span>
+            <span>• in progress</span>
           </div>
         </div>
 

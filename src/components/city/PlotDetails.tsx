@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { isFavoritePlot } from "../../lib/favorites";
 import { getLaneWeight } from "../../lib/infinity-layout";
@@ -44,8 +44,10 @@ function formatUnix(value?: number | bigint): string {
   if (value == null) return "—";
   const numeric = typeof value === "bigint" ? Number(value) : value;
   if (!numeric) return "—";
+
   const date = new Date(numeric * 1000);
   if (Number.isNaN(date.getTime())) return "—";
+
   return date.toLocaleDateString("en-GB");
 }
 
@@ -117,6 +119,12 @@ function cardBlockStyle(): CSSProperties {
   };
 }
 
+function normalizePlotId(value?: string | number | null): string | null {
+  if (value == null) return null;
+  const normalized = String(value).trim();
+  return normalized ? normalized : null;
+}
+
 function getOpportunitySignals(
   plot: InfinityPlot,
   liveStatus: CityPlotStatusRead | null,
@@ -171,6 +179,14 @@ function getOpportunitySignals(
     signals.push({ label: "Historically Significant", tone: "violet" });
   }
 
+  if (plot.status === "reserved") {
+    signals.push({ label: "Reserved Build Slot", tone: "gold" });
+  }
+
+  if (plot.status === "owned") {
+    signals.push({ label: "Owned / Active Plot", tone: "green" });
+  }
+
   if (!signals.length) {
     signals.push({ label: "Stable Standard Plot", tone: "gray" });
   }
@@ -184,21 +200,33 @@ function getRightsSummary(plot: InfinityPlot): string[] {
   if (plot.policy.isPersonal) {
     lines.push("Private personal plot in the ∞ city structure.");
   }
+
   if (plot.policy.isCommunity) {
-    lines.push("Reserved for shared community infrastructure and later governance use.");
+    lines.push(
+      "Reserved for shared community infrastructure and later governance use."
+    );
   }
+
   if (plot.policy.isBorderline) {
-    lines.push("Borderline cooperation zone between Inpinity and Inphinity.");
+    lines.push(
+      "Borderline cooperation zone between Inpinity and Inphinity."
+    );
   }
+
   if (plot.policy.isNexus) {
     lines.push("Core nexus bridge zone with strategic central importance.");
   }
+
   if (plot.policy.factionLocked) {
     lines.push("Bound to faction-side logic and placement rules.");
   }
+
   if (plot.policy.sharedUse) {
-    lines.push("Designed for collective or cross-faction utility rather than simple ownership.");
+    lines.push(
+      "Designed for collective or cross-faction utility rather than simple ownership."
+    );
   }
+
   if (plot.policy.purchasable) {
     lines.push("Prepared for a future purchase flow, not yet active.");
   } else {
@@ -216,11 +244,16 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
 
+  const normalizedPlotId = useMemo(
+    () => normalizePlotId(plot?.plotId),
+    [plot?.plotId]
+  );
+
   useEffect(() => {
     let cancelled = false;
 
     async function loadLiveDetails() {
-      if (!plot?.plotId) {
+      if (!normalizedPlotId) {
         setLiveDistrict(null);
         setLiveStatus(null);
         setLiveHistory(null);
@@ -234,16 +267,16 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
       setLiveError(null);
 
       try {
-        const districtPromise = getDistrict(plot.plotId);
-        const statusPromise = readCityStatus(plot.plotId);
-        const historyPromise = getPlotProvenance(plot.plotId);
+        const districtPromise = getDistrict(normalizedPlotId);
+        const statusPromise = readCityStatus(normalizedPlotId);
+        const historyPromise = getPlotProvenance(normalizedPlotId);
 
         const validationPromise =
-          plot.owner && plot.plotId
+          plot?.owner && normalizedPlotId
             ? readCityValidationSummary({
                 user: plot.owner,
                 slotIndex: 0,
-                plotId: plot.plotId,
+                plotId: normalizedPlotId,
                 x: 0,
                 y: 0,
               })
@@ -282,7 +315,7 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [plot?.plotId, plot?.owner]);
+  }, [normalizedPlotId, plot?.owner]);
 
   if (!plot) {
     return (
@@ -310,6 +343,7 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
         <h3 style={{ margin: 0 }}>
           {plot.label} · {pretty(plot.rarity)}
         </h3>
+
         <button
           className="toolbarButton active"
           onClick={() => onToggleFavorite(plot.id)}
@@ -339,6 +373,8 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
             ? `${plot.lastTransferDaysAgo} days ago`
             : "—"}
         </div>
+        <div>Plot ID: {normalizedPlotId || "—"}</div>
+        <div>Favorite: {yesNo(favorite)}</div>
       </div>
 
       <hr style={{ opacity: 0.15, margin: "16px 0" }} />
@@ -385,7 +421,7 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
         {!liveLoading && !liveError && (
           <>
             <div>
-              <strong>Onchain Plot ID:</strong> {plot.plotId || "—"}
+              <strong>Onchain Plot ID:</strong> {normalizedPlotId || "—"}
             </div>
             <div>
               <strong>District:</strong>{" "}
@@ -469,13 +505,25 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
       <div style={cardBlockStyle()}>
         {liveValidation ? (
           <>
-            <div>Can Reserve Personal Plot: {yesNo(liveValidation.canReservePersonalPlot)}</div>
-            <div>Valid Personal Plot Size: {yesNo(liveValidation.isValidPersonalPlotSize)}</div>
-            <div>Valid Community Plot Size: {yesNo(liveValidation.isValidCommunityPlotSize)}</div>
-            <div>Can Use Faction Inpinity: {yesNo(liveValidation.canUseFactionInpinity)}</div>
-            <div>Can Use Faction Inphinity: {yesNo(liveValidation.canUseFactionInphinity)}</div>
+            <div>
+              Can Reserve Personal Plot: {yesNo(liveValidation.canReservePersonalPlot)}
+            </div>
+            <div>
+              Valid Personal Plot Size: {yesNo(liveValidation.isValidPersonalPlotSize)}
+            </div>
+            <div>
+              Valid Community Plot Size: {yesNo(liveValidation.isValidCommunityPlotSize)}
+            </div>
+            <div>
+              Can Use Faction Inpinity: {yesNo(liveValidation.canUseFactionInpinity)}
+            </div>
+            <div>
+              Can Use Faction Inphinity: {yesNo(liveValidation.canUseFactionInphinity)}
+            </div>
             <div>Can Fill Qubiq: {yesNo(liveValidation.canFillQubiq)}</div>
-            <div>Can Use Aether On Qubiq: {yesNo(liveValidation.canUseAetherOnQubiq)}</div>
+            <div>
+              Can Use Aether On Qubiq: {yesNo(liveValidation.canUseAetherOnQubiq)}
+            </div>
           </>
         ) : (
           <div>No live validation snapshot available.</div>
