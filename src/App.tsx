@@ -143,6 +143,7 @@ export default function App() {
     address: null,
     chainId: null,
     chosenFaction: null,
+    hasCityKey: null,
   });
 
   const [ownedCityKeys, setOwnedCityKeys] = useState<CityKeyOption[]>([]);
@@ -260,6 +261,7 @@ export default function App() {
             address: null,
             chainId,
             chosenFaction: null,
+            hasCityKey: null,
           });
         }
       } catch (walletError) {
@@ -273,11 +275,12 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadWalletFaction() {
+    async function loadWalletRegistryState() {
       if (!wallet.isConnected || !wallet.address) {
         setWallet((prev) => ({
           ...prev,
           chosenFaction: null,
+          hasCityKey: null,
         }));
         return;
       }
@@ -289,19 +292,21 @@ export default function App() {
         setWallet((prev) => ({
           ...prev,
           chosenFaction: registry.chosenFaction,
+          hasCityKey: registry.hasCityKey,
         }));
       } catch (err) {
-        console.warn("Registry faction read failed:", err);
+        console.warn("Registry state read failed:", err);
         if (!cancelled) {
           setWallet((prev) => ({
             ...prev,
             chosenFaction: null,
+            hasCityKey: null,
           }));
         }
       }
     }
 
-    loadWalletFaction();
+    loadWalletRegistryState();
 
     return () => {
       cancelled = true;
@@ -595,6 +600,12 @@ export default function App() {
           <div className="card">
             <div className="muted">CityConfig</div>
             <strong>{cityConfigSnapshot ? "loaded" : "loading / unavailable"}</strong>
+          </div>
+          <div className="card">
+            <div className="muted">City Key</div>
+            <strong>
+              {wallet.hasCityKey == null ? "unknown" : wallet.hasCityKey ? "set" : "not set"}
+            </strong>
           </div>
           <div className="card">
             <div className="muted">Owned City Keys</div>
