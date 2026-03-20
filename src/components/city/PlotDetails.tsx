@@ -1,6 +1,29 @@
+import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { isFavoritePlot } from "../../lib/favorites";
 import { getLaneWeight } from "../../lib/infinity-layout";
 import type { InfinityPlot } from "../../types/infinity";
+import {
+  getDistrict,
+  getDistrictFactionLabel,
+  getDistrictKindLabel,
+  type CityDistrictRead,
+} from "../../lib/city-districts";
+import {
+  getCityStatusLabel,
+  readCityStatus,
+  type CityPlotStatusRead,
+} from "../../lib/city-status";
+import {
+  getHistoryFactionLabel,
+  getHistoricWeight,
+  getPlotProvenance,
+  type CityPlotProvenanceRead,
+} from "../../lib/city-history";
+import {
+  readCityValidationSummary,
+  type CityValidationSummary,
+} from "../../lib/city-validation";
 
 type Props = {
   plot: InfinityPlot | null;
@@ -17,16 +40,18 @@ function yesNo(value: boolean): string {
   return value ? "Yes" : "No";
 }
 
-function formatUnix(value?: number): string {
-  if (!value) return "—";
-  const date = new Date(value * 1000);
+function formatUnix(value?: number | bigint): string {
+  if (value == null) return "—";
+  const numeric = typeof value === "bigint" ? Number(value) : value;
+  if (!numeric) return "—";
+  const date = new Date(numeric * 1000);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleDateString("en-GB");
 }
 
 function badgeStyle(
   tone: "gold" | "blue" | "green" | "red" | "gray" | "violet"
-): React.CSSProperties {
+): CSSProperties {
   const map = {
     gold: {
       background: "rgba(245, 196, 110, 0.18)",
@@ -72,7 +97,7 @@ function badgeStyle(
   };
 }
 
-function sectionTitleStyle(): React.CSSProperties {
+function sectionTitleStyle(): CSSProperties {
   return {
     marginTop: 0,
     marginBottom: 10,
@@ -81,7 +106,7 @@ function sectionTitleStyle(): React.CSSProperties {
   };
 }
 
-function cardBlockStyle(): React.CSSProperties {
+function cardBlockStyle(): CSSProperties {
   return {
     display: "grid",
     gap: 10,
@@ -92,7 +117,12 @@ function cardBlockStyle(): React.CSSProperties {
   };
 }
 
-function getOpportunitySignals(plot: InfinityPlot): Array<{
+function getOpportunitySignals(
+  plot: InfinityPlot,
+  liveStatus: CityPlotStatusRead | null,
+  liveHistory: CityPlotProvenanceRead | null,
+  liveDistrict: CityDistrictRead | null
+): Array<{
   label: string;
   tone: "gold" | "blue" | "green" | "red" | "gray" | "violet";
 }> {
@@ -113,7 +143,7 @@ function getOpportunitySignals(plot: InfinityPlot): Array<{
     signals.push({ label: "Strong Provenance", tone: "blue" });
   }
 
-  if (plot.statusInfo?.canLayerUpgrade) {
+  if (plot.statusInfo?.canLayerUpgrade || liveStatus?.layerEligible) {
     signals.push({ label: "Layer Upgrade Possible", tone: "green" });
   }
 
@@ -131,6 +161,14 @@ function getOpportunitySignals(plot: InfinityPlot): Array<{
 
   if (plot.policy.factionLocked) {
     signals.push({ label: "Faction Restricted", tone: "gray" });
+  }
+
+  if (liveDistrict?.isBorderline) {
+    signals.push({ label: "Borderline District", tone: "green" });
+  }
+
+  if (liveHistory && getHistoricWeight(liveHistory) >= 220) {
+    signals.push({ label: "Historically Significant", tone: "violet" });
   }
 
   if (!signals.length) {
@@ -171,6 +209,81 @@ function getRightsSummary(plot: InfinityPlot): string[] {
 }
 
 export default function PlotDetails({ plot, onToggleFavorite }: Props) {
+  const [liveDistrict, setLiveDistrict] = useState<CityDistrictRead | null>(null);
+  const [liveStatus, setLiveStatus] = useState<CityPlotStatusRead | null>(null);
+  const [liveHistory, setLiveHistory] = useState<CityPlotProvenanceRead | null>(null);
+  const [liveValidation, setLiveValidation] = useState<CityValidationSummary | null>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLiveDetails() {
+      if (!plot?.plotId) {
+        setLiveDistrict(null);
+        setLiveStatus(null);
+        setLiveHistory(null);
+        setLiveValidation(null);
+        setLiveError(null);
+        setLiveLoading(false);
+        return;
+      }
+
+      setLiveLoading(true);
+      setLiveError(null);
+
+      try {
+        const districtPromise = getDistrict(plot.plotId);
+        const statusPromise = readCityStatus(plot.plotId);
+        const historyPromise = getPlotProvenance(plot.plotId);
+
+        const validationPromise =
+          plot.owner && plot.plotId
+            ? readCityValidationSummary({
+                user: plot.owner,
+                slotIndex: 0,
+                plotId: plot.plotId,
+                x: 0,
+                y: 0,
+              })
+            : Promise.resolve(null);
+
+        const [district, status, history, validation] = await Promise.all([
+          districtPromise,
+          statusPromise,
+          historyPromise,
+          validationPromise,
+        ]);
+
+        if (cancelled) return;
+
+        setLiveDistrict(district);
+        setLiveStatus(status);
+        setLiveHistory(history);
+        setLiveValidation(validation);
+        setLiveLoading(false);
+      } catch (error) {
+        if (cancelled) return;
+
+        setLiveDistrict(null);
+        setLiveStatus(null);
+        setLiveHistory(null);
+        setLiveValidation(null);
+        setLiveLoading(false);
+        setLiveError(
+          error instanceof Error ? error.message : "Live plot details failed."
+        );
+      }
+    }
+
+    loadLiveDetails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [plot?.plotId, plot?.owner]);
+
   if (!plot) {
     return (
       <div className="detailsCard">
@@ -183,11 +296,12 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
   const favorite = isFavoritePlot(plot.id);
   const laneWeight = getLaneWeight(plot.lane);
 
-  const estimatedValue = plot.valueModel?.finalEstimate ?? plot.priceEstimate;
+  const estimatedValue = plot.valueModel?.finalEstimate ?? plot.priceEstimate ?? 0;
   const provenance = plot.provenance;
   const statusInfo = plot.statusInfo;
   const policy = plot.policy;
-  const signals = getOpportunitySignals(plot);
+
+  const signals = getOpportunitySignals(plot, liveStatus, liveHistory, liveDistrict);
   const rightsSummary = getRightsSummary(plot);
 
   return (
@@ -263,6 +377,54 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
 
       <hr style={{ opacity: 0.15, margin: "16px 0" }} />
 
+      <h4 style={sectionTitleStyle()}>Live Core Data</h4>
+      <div style={cardBlockStyle()}>
+        {liveLoading && <div>Loading live district / status / history...</div>}
+        {liveError && <div style={{ color: "#ff9d9d" }}>{liveError}</div>}
+
+        {!liveLoading && !liveError && (
+          <>
+            <div>
+              <strong>Onchain Plot ID:</strong> {plot.plotId || "—"}
+            </div>
+            <div>
+              <strong>District:</strong>{" "}
+              {liveDistrict ? getDistrictKindLabel(liveDistrict.kind) : "—"}
+            </div>
+            <div>
+              <strong>District Faction:</strong>{" "}
+              {liveDistrict ? getDistrictFactionLabel(liveDistrict.faction) : "—"}
+            </div>
+            <div>
+              <strong>District Bonus:</strong>{" "}
+              {liveDistrict ? `${liveDistrict.bonusBps} bps` : "—"}
+            </div>
+            <div>
+              <strong>Derived Status:</strong>{" "}
+              {liveStatus ? getCityStatusLabel(liveStatus.derivedStatus) : "—"}
+            </div>
+            <div>
+              <strong>Manual Status:</strong>{" "}
+              {liveStatus ? getCityStatusLabel(liveStatus.manualStatus) : "—"}
+            </div>
+            <div>
+              <strong>Layer Eligible:</strong>{" "}
+              {liveStatus ? yesNo(liveStatus.layerEligible) : "—"}
+            </div>
+            <div>
+              <strong>Origin Faction:</strong>{" "}
+              {liveHistory ? getHistoryFactionLabel(liveHistory.originFaction) : "—"}
+            </div>
+            <div>
+              <strong>Historic Weight:</strong>{" "}
+              {liveHistory ? getHistoricWeight(liveHistory) : "—"}
+            </div>
+          </>
+        )}
+      </div>
+
+      <hr style={{ opacity: 0.15, margin: "16px 0" }} />
+
       <h4 style={sectionTitleStyle()}>Historical Value</h4>
       <div className="detailsGrid">
         <div>Historic Score: {provenance?.historicScore ?? "—"}</div>
@@ -297,6 +459,27 @@ export default function PlotDetails({ plot, onToggleFavorite }: Props) {
         <div>Provenance Updated: {formatUnix(provenance?.lastUpdated)}</div>
         <div>Last Activity: {formatUnix(statusInfo?.lastActivityAt)}</div>
         <div>Last Maintenance: {formatUnix(statusInfo?.lastMaintenanceAt)}</div>
+        <div>Live Activity: {formatUnix(liveStatus?.lastActivityAt)}</div>
+        <div>Live Maintenance: {formatUnix(liveStatus?.lastMaintenanceAt)}</div>
+      </div>
+
+      <hr style={{ opacity: 0.15, margin: "16px 0" }} />
+
+      <h4 style={sectionTitleStyle()}>Validation Snapshot</h4>
+      <div style={cardBlockStyle()}>
+        {liveValidation ? (
+          <>
+            <div>Can Reserve Personal Plot: {yesNo(liveValidation.canReservePersonalPlot)}</div>
+            <div>Valid Personal Plot Size: {yesNo(liveValidation.isValidPersonalPlotSize)}</div>
+            <div>Valid Community Plot Size: {yesNo(liveValidation.isValidCommunityPlotSize)}</div>
+            <div>Can Use Faction Inpinity: {yesNo(liveValidation.canUseFactionInpinity)}</div>
+            <div>Can Use Faction Inphinity: {yesNo(liveValidation.canUseFactionInphinity)}</div>
+            <div>Can Fill Qubiq: {yesNo(liveValidation.canFillQubiq)}</div>
+            <div>Can Use Aether On Qubiq: {yesNo(liveValidation.canUseAetherOnQubiq)}</div>
+          </>
+        ) : (
+          <div>No live validation snapshot available.</div>
+        )}
       </div>
 
       <hr style={{ opacity: 0.15, margin: "16px 0" }} />

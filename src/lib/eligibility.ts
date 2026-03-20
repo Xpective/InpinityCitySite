@@ -5,6 +5,7 @@ export type WalletState = {
   isConnected: boolean;
   address?: string | null;
   chainId?: number | null;
+  chosenFaction?: "inpinity" | "inphinity" | "none" | null;
 };
 
 export type PlotEligibility = {
@@ -26,6 +27,39 @@ export type PlotEligibility = {
 
 const BASE_CHAIN_ID = 8453;
 
+function getPlotFactionAllowed(
+  plot: InfinityPlot,
+  wallet: WalletState
+): boolean {
+  if (!plot.policy.isPersonal) return false;
+
+  const walletFaction = wallet.chosenFaction ?? null;
+
+  if (!walletFaction || walletFaction === "none") {
+    return true;
+  }
+
+  return plot.faction === walletFaction;
+}
+
+function getFactionReason(plot: InfinityPlot, wallet: WalletState): string | null {
+  const walletFaction = wallet.chosenFaction ?? null;
+
+  if (!plot.policy.isPersonal) {
+    return null;
+  }
+
+  if (!walletFaction || walletFaction === "none") {
+    return "Wallet faction is not loaded yet. Flow will determine or set the faction onchain.";
+  }
+
+  if (plot.faction !== walletFaction) {
+    return `This wallet is bound to ${walletFaction} and cannot privately build on ${plot.faction}.`;
+  }
+
+  return null;
+}
+
 export function getPlotEligibility(
   plot: InfinityPlot | null,
   wallet: WalletState,
@@ -46,6 +80,7 @@ export function getPlotEligibility(
         { key: "plot-selected", label: "Plot selected", passed: false },
         { key: "wallet", label: "Wallet connected", passed: wallet.isConnected },
         { key: "chain", label: "Correct chain (Base)", passed: wallet.chainId === BASE_CHAIN_ID },
+        { key: "faction", label: "Faction compatible", passed: false },
         { key: "qubiq-resources", label: "Enough resources for next Qubiq", passed: false },
       ],
     };
@@ -61,7 +96,9 @@ export function getPlotEligibility(
 
   const plotKindAllowed = isPersonal && !isCommunity && !isBorderline && !isNexus;
   const statusAllowed = plot.status === "free";
-  const factionAllowed = !plot.policy.sharedUse;
+  const sharedZoneBlocked = !plot.policy.sharedUse;
+  const factionMatchAllowed = getPlotFactionAllowed(plot, wallet);
+  const factionAllowed = sharedZoneBlocked && factionMatchAllowed;
   const resourcesReady = resourceEligibility ? resourceEligibility.ready : false;
 
   const reasons: string[] = [];
@@ -90,8 +127,13 @@ export function getPlotEligibility(
     reasons.push(`This plot is not free. Current status: ${plot.status}.`);
   }
 
-  if (!factionAllowed) {
+  if (!sharedZoneBlocked) {
     reasons.push("This plot belongs to a shared-use zone and is not available for personal contribution.");
+  }
+
+  const factionReason = getFactionReason(plot, wallet);
+  if (factionReason) {
+    reasons.push(factionReason);
   }
 
   if (!resourceEligibility) {
@@ -129,7 +171,7 @@ export function getPlotEligibility(
       { key: "chain", label: "Correct chain (Base)", passed: correctChain },
       { key: "personal", label: "Personal 5x5 plot", passed: plotKindAllowed },
       { key: "free", label: "Plot is free", passed: statusAllowed },
-      { key: "not-shared", label: "Not a shared-use zone", passed: factionAllowed },
+      { key: "faction", label: "Faction compatible", passed: factionAllowed },
       { key: "qubiq-resources", label: "Enough resources for next Qubiq", passed: resourcesReady },
       { key: "qubiq-live", label: "Qubiq completion live", passed: false },
     ],

@@ -23,6 +23,7 @@ import {
   type QubiqFlowResult,
   type QubiqFlowStep,
 } from "./lib/city-qubiq-flow";
+import { readRegistryState } from "./lib/city-registry";
 
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import ErrorMessage from "./components/common/ErrorMessage";
@@ -137,6 +138,7 @@ export default function App() {
     isConnected: false,
     address: null,
     chainId: null,
+    chosenFaction: null,
   });
 
   const [cityConfigSnapshot, setCityConfigSnapshot] = useState<CityConfigSnapshot | null>(null);
@@ -239,16 +241,18 @@ export default function App() {
         const chainId = parseInt(chainIdHex, 16);
 
         if (accounts?.length) {
-          setWallet({
+          setWallet((prev) => ({
+            ...prev,
             isConnected: true,
             address: accounts[0],
             chainId,
-          });
+          }));
         } else {
           setWallet({
             isConnected: false,
             address: null,
             chainId,
+            chosenFaction: null,
           });
         }
       } catch (walletError) {
@@ -258,6 +262,44 @@ export default function App() {
 
     syncWalletState();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWalletFaction() {
+      if (!wallet.isConnected || !wallet.address) {
+        setWallet((prev) => ({
+          ...prev,
+          chosenFaction: null,
+        }));
+        return;
+      }
+
+      try {
+        const registry = await readRegistryState(wallet.address);
+        if (cancelled) return;
+
+        setWallet((prev) => ({
+          ...prev,
+          chosenFaction: registry.chosenFaction,
+        }));
+      } catch (err) {
+        console.warn("Registry faction read failed:", err);
+        if (!cancelled) {
+          setWallet((prev) => ({
+            ...prev,
+            chosenFaction: null,
+          }));
+        }
+      }
+    }
+
+    loadWalletFaction();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [wallet.isConnected, wallet.address, retryCount]);
 
   useEffect(() => {
     let cancelled = false;
@@ -322,11 +364,12 @@ export default function App() {
 
       const chainId = parseInt(chainIdHex, 16);
 
-      setWallet({
+      setWallet((prev) => ({
+        ...prev,
         isConnected: !!accounts?.length,
         address: accounts?.[0] || null,
         chainId,
-      });
+      }));
     } catch (walletError) {
       console.error("Wallet connect failed:", walletError);
     }
@@ -502,6 +545,10 @@ export default function App() {
           <div className="card">
             <div className="muted">CityConfig</div>
             <strong>{cityConfigSnapshot ? "loaded" : "loading / unavailable"}</strong>
+          </div>
+          <div className="card">
+            <div className="muted">Wallet Faction</div>
+            <strong>{wallet.chosenFaction || "not set / unknown"}</strong>
           </div>
           <div className="card">
             <div className="muted">Flow Step</div>

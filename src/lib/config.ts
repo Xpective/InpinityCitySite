@@ -9,4 +9,7 @@ export const CONFIG = {
   cityLandAddress: clean(import.meta.env.VITE_CITY_LAND_ADDRESS),
   cityConfigAddress: clean(import.meta.env.VITE_CITY_CONFIG_ADDRESS),
   cityStatusAddress: clean(import.meta.env.VITE_CITY_STATUS_ADDRESS),
+  cityDistrictsAddress: import.meta.env.VITE_CITY_DISTRICTS_ADDRESS,
+  cityHistoryAddress: import.meta.env.VITE_CITY_HISTORY_ADDRESS,
+  cityValidationAddress: import.meta.env.VITE_CITY_VALIDATION_ADDRESS,
 };
