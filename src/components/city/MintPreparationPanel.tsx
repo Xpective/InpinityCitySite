@@ -262,6 +262,15 @@ function getPrimaryAction(props: {
     };
   }
 
+  if (wallet.hasCityKey && (!wallet.chosenFaction || wallet.chosenFaction === "none")) {
+    return {
+      label: "Choose Faction",
+      helper: "Your City Key is already set. Choose exactly one faction for this wallet.",
+      disabled: false,
+      action: "flow",
+    };
+  }
+
   if (flowResult?.code === "needs_faction") {
     return {
       label: "Choose Faction",
@@ -335,7 +344,7 @@ function getPrimaryAction(props: {
     };
   }
 
-  if (ownedCityKeys.length > 0 && selectedCityKeyTokenId) {
+  if (!wallet.hasCityKey && ownedCityKeys.length > 0 && selectedCityKeyTokenId) {
     return {
       label: "Set City Key",
       helper: `Use NFT #${selectedCityKeyTokenId} as your City Key.`,
@@ -431,6 +440,10 @@ export default function MintPreparationPanel({
             {wallet.chosenFaction && wallet.chosenFaction !== "none"
               ? pretty(wallet.chosenFaction)
               : "Not chosen yet"}
+          </div>
+          <div>
+            <strong>City Key:</strong>{" "}
+            {wallet.hasCityKey == null ? "Unknown" : wallet.hasCityKey ? "Set" : "Not set"}
           </div>
           <div>
             <strong>Faction Rule:</strong> One wallet chooses one faction and builds only within that side. Community, Borderline and Nexus remain shared / later-governed zones.
