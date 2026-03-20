@@ -124,6 +124,161 @@ function getQubiqStateLabel(qubiq?: QubiqReadState | null): string {
   return "Empty";
 }
 
+function getPrimaryAction(props: {
+  plot: InfinityPlot | null;
+  wallet: WalletState;
+  eligibility: PlotEligibility;
+  resourceEligibility?: ResourceEligibility | null;
+  flowBusy: boolean;
+  flowResult: QubiqFlowResult | null;
+}): {
+  label: string;
+  helper: string;
+  disabled: boolean;
+  action: "connect" | "flow" | "none";
+} {
+  const { plot, wallet, eligibility, resourceEligibility, flowBusy, flowResult } = props;
+
+  if (flowBusy) {
+    return {
+      label: "Processing...",
+      helper: "The onchain flow is currently running.",
+      disabled: true,
+      action: "none",
+    };
+  }
+
+  if (!plot) {
+    return {
+      label: "Select Plot",
+      helper: "Choose a plot on the map first.",
+      disabled: true,
+      action: "none",
+    };
+  }
+
+  if (!wallet.isConnected) {
+    return {
+      label: "Connect Wallet",
+      helper: "Connect your wallet to begin the city flow.",
+      disabled: false,
+      action: "connect",
+    };
+  }
+
+  if (plot.policy.isCommunity) {
+    return {
+      label: "Community Plot Reserved",
+      helper: "Community plots are not privately buildable. Shared infrastructure and support flow can come later.",
+      disabled: true,
+      action: "none",
+    };
+  }
+
+  if (plot.policy.isBorderline) {
+    return {
+      label: "Borderline Crowdfunding Later",
+      helper: "Borderline plots are cooperative zones and will use shared contribution later.",
+      disabled: true,
+      action: "none",
+    };
+  }
+
+  if (plot.policy.isNexus) {
+    return {
+      label: "Nexus Crowdfunding Later",
+      helper: "Nexus plots are central shared zones and are not privately buildable.",
+      disabled: true,
+      action: "none",
+    };
+  }
+
+  if (!eligibility.plotKindAllowed) {
+    return {
+      label: "Plot Type Not Allowed",
+      helper: "Only personal 5x5 plots can currently enter the private Qubiq flow.",
+      disabled: true,
+      action: "none",
+    };
+  }
+
+  if (!eligibility.statusAllowed) {
+    return {
+      label: "Plot Not Free",
+      helper: "Only free personal plots can be reserved and built.",
+      disabled: true,
+      action: "none",
+    };
+  }
+
+  if (flowResult?.code === "needs_city_key") {
+    return {
+      label: "Set City Key",
+      helper: "This wallet needs a City Key token before it can reserve a personal plot.",
+      disabled: false,
+      action: "flow",
+    };
+  }
+
+  if (flowResult?.code === "needs_faction") {
+    return {
+      label: "Choose Faction",
+      helper: "A wallet must choose exactly one faction before building in the city.",
+      disabled: false,
+      action: "flow",
+    };
+  }
+
+  if (flowResult?.code === "reservation_sent") {
+    return {
+      label: "Continue After Reservation",
+      helper: "The personal plot was reserved. Continue to the next live step.",
+      disabled: false,
+      action: "flow",
+    };
+  }
+
+  if (flowResult?.code === "needs_resource_approval" || flowResult?.code === "approval_sent") {
+    return {
+      label: "Approve Resources",
+      helper: "CityLand needs ERC1155 approval before contributing Qubiq resources.",
+      disabled: false,
+      action: "flow",
+    };
+  }
+
+  if (resourceEligibility && !resourceEligibility.ready) {
+    return {
+      label: "Need More Resources",
+      helper: "You need more Oil, Lemons, or Iron before the next Qubiq contribution.",
+      disabled: true,
+      action: "none",
+    };
+  }
+
+  if (flowResult?.code === "contribution_sent") {
+    return {
+      label: "Contribute Next Qubiq",
+      helper: "The last contribution succeeded. You can continue building the next cell.",
+      disabled: false,
+      action: "flow",
+    };
+  }
+
+  return {
+    label: reservedPlotIdLike(flowResult) ? "Contribute Qubiq" : "Reserve Plot",
+    helper: reservedPlotIdLike(flowResult)
+      ? "Contribute resources into the selected Qubiq cell."
+      : "Reserve the next personal plot for this wallet and begin the build flow.",
+    disabled: false,
+    action: "flow",
+  };
+}
+
+function reservedPlotIdLike(flowResult: QubiqFlowResult | null): boolean {
+  return !!flowResult?.plotId;
+}
+
 export default function MintPreparationPanel({
   plot,
   wallet,
@@ -158,6 +313,15 @@ export default function MintPreparationPanel({
       ? "bad"
       : "neutral";
 
+  const primaryAction = getPrimaryAction({
+    plot,
+    wallet,
+    eligibility,
+    resourceEligibility,
+    flowBusy,
+    flowResult,
+  });
+
   return (
     <section className="panel">
       <h2>Qubiq Build Terminal</h2>
@@ -181,11 +345,6 @@ export default function MintPreparationPanel({
             <strong>Flow Step:</strong>{" "}
             <span style={badgeStyle(flowBadgeKind)}>{getFlowLabel(flowStep)}</span>
           </div>
-          {!wallet.isConnected && (
-            <button className="toolbarButton active" onClick={onConnectWallet}>
-              Connect Wallet
-            </button>
-          )}
         </div>
 
         <div style={panelBoxStyle()}>
@@ -211,6 +370,10 @@ export default function MintPreparationPanel({
           <div>
             <strong>Estimated Plot Value:</strong>{" "}
             {plot ? `${plot.valueModel?.finalEstimate || plot.priceEstimate} PIT` : "—"}
+          </div>
+          <div>
+            <strong>Private Build Allowed:</strong>{" "}
+            {plot ? (plot.policy.isPersonal ? "Yes" : "No") : "—"}
           </div>
         </div>
 
@@ -430,6 +593,21 @@ export default function MintPreparationPanel({
 
           <div
             style={{
+              marginTop: 8,
+              padding: 10,
+              borderRadius: 10,
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <div>
+              <strong>Current Action:</strong> {primaryAction.label}
+            </div>
+            <div style={{ marginTop: 4, color: "#cfd6e4" }}>{primaryAction.helper}</div>
+          </div>
+
+          <div
+            style={{
               display: "grid",
               gap: 8,
               marginTop: 8,
@@ -458,21 +636,23 @@ export default function MintPreparationPanel({
         >
           <button
             className="toolbarButton"
-            disabled={flowBusy || !plot}
-            onClick={onPrepareContribution}
-            title={
-              flowBusy
-                ? "Flow is running"
-                : "Run the next real onchain Qubiq flow step"
+            disabled={primaryAction.disabled}
+            onClick={
+              primaryAction.action === "connect"
+                ? onConnectWallet
+                : primaryAction.action === "flow"
+                ? onPrepareContribution
+                : undefined
             }
+            title={primaryAction.helper}
           >
-            {flowBusy ? "Processing..." : "Run Next Qubiq Step"}
+            {primaryAction.label}
           </button>
 
           <button
             className="toolbarButton"
             disabled
-            title="Full plot completion flow will be unlocked in a later phase"
+            title="Full plot completion and shared crowdfunding flows will be unlocked later"
           >
             Complete Plot (Coming Soon)
           </button>
