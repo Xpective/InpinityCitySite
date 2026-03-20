@@ -240,6 +240,16 @@ function getPrimaryAction(props: {
     };
   }
 
+  if (!eligibility.factionAllowed || flowResult?.code === "faction_mismatch") {
+    return {
+      label: "Faction Mismatch",
+      helper:
+        "This wallet is already bound to another faction and cannot build on this side.",
+      disabled: true,
+      action: "none",
+    };
+  }
+
   if (flowResult?.code === "needs_city_key") {
     return {
       label: "Set City Key",
@@ -261,22 +271,38 @@ function getPrimaryAction(props: {
     };
   }
 
-  if (flowResult?.code === "reservation_sent") {
+  if (flowResult?.code === "needs_resource_approval") {
     return {
-      label: "Reserve Plot",
-      helper: "The plot is reserved. Continue to the next step.",
+      label: "Approve Resources",
+      helper: "CityLand needs ERC1155 approval before Qubiq contribution.",
       disabled: false,
       action: "flow",
     };
   }
 
-  if (
-    flowResult?.code === "needs_resource_approval" ||
-    flowResult?.code === "approval_sent"
-  ) {
+  if (flowResult?.code === "approval_sent") {
     return {
-      label: "Approve Resources",
-      helper: "CityLand needs ERC1155 approval before Qubiq contribution.",
+      label: "Contribute Qubiq",
+      helper: "Approval is done. Continue with the first Qubiq contribution.",
+      disabled: false,
+      action: "flow",
+    };
+  }
+
+  if (flowResult?.code === "reservation_sent") {
+    return {
+      label: "Contribute Qubiq",
+      helper: "The plot is reserved. Continue with the first Qubiq contribution.",
+      disabled: false,
+      action: "flow",
+    };
+  }
+
+  if (flowResult?.code === "contribution_sent") {
+    return {
+      label: "Contribute Next Qubiq",
+      helper:
+        "The last contribution succeeded. You can continue building the next cell.",
       disabled: false,
       action: "flow",
     };
@@ -291,10 +317,7 @@ function getPrimaryAction(props: {
     };
   }
 
-  if (
-    flowResult?.code === "contribution_sent" ||
-    hasReservedPlotIdentity(flowResult, reservedPlotId)
-  ) {
+  if (hasReservedPlotIdentity(flowResult, reservedPlotId)) {
     return {
       label: "Contribute Qubiq",
       helper: "Contribute resources into the selected Qubiq cell.",
@@ -303,11 +326,7 @@ function getPrimaryAction(props: {
     };
   }
 
-  if (
-    wallet.chosenFaction &&
-    wallet.chosenFaction !== "none" &&
-    !hasReservedPlotIdentity(flowResult, reservedPlotId)
-  ) {
+  if (wallet.chosenFaction && wallet.chosenFaction !== "none") {
     return {
       label: "Reserve Plot",
       helper: "Reserve the next personal plot for this wallet.",
@@ -316,14 +335,20 @@ function getPrimaryAction(props: {
     };
   }
 
+  if (ownedCityKeys.length > 0 && selectedCityKeyTokenId) {
+    return {
+      label: "Set City Key",
+      helper: `Use NFT #${selectedCityKeyTokenId} as your City Key.`,
+      disabled: false,
+      action: "flow",
+    };
+  }
+
   return {
     label: "Set City Key",
-    helper:
-      ownedCityKeys.length > 0 && selectedCityKeyTokenId
-        ? `Use NFT #${selectedCityKeyTokenId} as your City Key.`
-        : "Select one of your InpinityNFTs as City Key first.",
-    disabled: ownedCityKeys.length === 0 || !selectedCityKeyTokenId,
-    action: "flow",
+    helper: "Select one of your InpinityNFTs as City Key first.",
+    disabled: true,
+    action: "none",
   };
 }
 
