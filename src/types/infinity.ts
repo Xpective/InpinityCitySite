@@ -36,6 +36,16 @@ export type InfinityPlotTier =
   | "inner"
   | "nexus";
 
+export type InfinityLayoutSource =
+  | "mock"
+  | "subgraph-index"
+  | "canonical-faction";
+
+export type InfinityPlotLayoutState =
+  | "synthetic"
+  | "aligned"
+  | "corrected";
+
 export type InfinityPlotPolicy = {
   isPersonal: boolean;
   isCommunity: boolean;
@@ -125,5 +135,9 @@ export type InfinityPlot = {
 
   provenance?: InfinityPlotProvenance;
   statusInfo?: InfinityPlotStatusInfo;
-  valueModel?: InfinityPlotValueModel; 
+  valueModel?: InfinityPlotValueModel;
+  layoutSource?: InfinityLayoutSource;
+  layoutState?: InfinityPlotLayoutState;
+  layoutNote?: string;
+  factionSideMismatch?: boolean;
 };

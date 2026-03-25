@@ -1,10 +1,12 @@
 import { useMemo, useState, useCallback, useRef } from "react";
+import type { FocusEvent, KeyboardEvent, MouseEvent } from "react";
 import type { InfinityPlot } from "../../types/infinity";
 import {
   CENTER_X,
   CENTER_Y,
   SVG_HEIGHT,
   SVG_WIDTH,
+  getCanonicalSideFromFaction,
   getFactionGlow,
   getFactionStroke,
   getInfinityPath,
@@ -18,6 +20,7 @@ type Props = {
   onSelectPlot: (plot: InfinityPlot) => void;
   showLabels: boolean;
   heatmapMode: boolean;
+  advancedMode: boolean;
 };
 
 const STATUS_STYLES = {
@@ -87,16 +90,26 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function getRenderSide(plot: InfinityPlot): "left" | "right" | "center" {
+  if (plot.plotKind === "personal-5x5") {
+    const canonical = getCanonicalSideFromFaction(plot.faction);
+    if (canonical) return canonical;
+  }
+
+  return plot.side;
+}
+
 function getEnhancedHeatColor(plot: InfinityPlot): string {
   const historicScore = plot.provenance?.historicScore;
   const aetherUses = plot.provenance?.aetherUses;
+  const renderSide = getRenderSide(plot);
 
   if (historicScore !== undefined) {
     const intensity = Math.min(historicScore / 1000, 1);
-    if (plot.side === "left") {
+    if (renderSide === "left") {
       return `rgba(255, ${Math.round(100 + intensity * 155)}, 100, ${0.4 + intensity * 0.6})`;
     }
-    if (plot.side === "right") {
+    if (renderSide === "right") {
       return `rgba(100, ${Math.round(100 + intensity * 155)}, 255, ${0.4 + intensity * 0.6})`;
     }
   }
@@ -109,14 +122,14 @@ function getEnhancedHeatColor(plot: InfinityPlot): string {
   const d = Math.min(plot.distanceToNexus, 360);
   const intensity = 1 - d / 360;
 
-  if (plot.side === "left") {
+  if (renderSide === "left") {
     const r = Math.round(255 - intensity * 12);
     const g = Math.round(145 + intensity * 70);
     const b = Math.round(75 - intensity * 35);
     return `rgb(${r},${g},${Math.max(28, b)})`;
   }
 
-  if (plot.side === "right") {
+  if (renderSide === "right") {
     const r = Math.round(95 + intensity * 55);
     const g = Math.round(125 + intensity * 35);
     const b = Math.round(255 - intensity * 24);
@@ -128,14 +141,15 @@ function getEnhancedHeatColor(plot: InfinityPlot): string {
 
 function getPersonalSideColor(plot: InfinityPlot): string {
   const t = Math.min(plot.distanceToNexus / 380, 1);
+  const renderSide = getRenderSide(plot);
 
-  if (plot.side === "left") {
+  if (renderSide === "left") {
     const inner = { r: 245, g: 196, b: 110 };
     const outer = { r: 134, g: 122, b: 116 };
     return `rgb(${mix(inner.r, outer.r, t)}, ${mix(inner.g, outer.g, t)}, ${mix(inner.b, outer.b, t)})`;
   }
 
-  if (plot.side === "right") {
+  if (renderSide === "right") {
     const inner = { r: 245, g: 196, b: 110 };
     const outer = { r: 116, g: 126, b: 142 };
     return `rgb(${mix(inner.r, outer.r, t)}, ${mix(inner.g, outer.g, t)}, ${mix(inner.b, outer.b, t)})`;
@@ -199,6 +213,7 @@ export default function InfinityMap({
   onSelectPlot,
   showLabels,
   heatmapMode,
+  advancedMode,
 }: Props) {
   const infinityPath = getInfinityPath();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -214,6 +229,8 @@ export default function InfinityMap({
   const [hoveredPlot, setHoveredPlot] = useState<InfinityPlot | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [mapZoom, setMapZoom] = useState(1);
+  const [showLegend, setShowLegend] = useState(true);
+  const [showFilters, setShowFilters] = useState(true);
 
   const filteredPlots = useMemo(() => {
     return plots.filter((plot) => {
@@ -232,16 +249,23 @@ export default function InfinityMap({
       community: filteredPlots.filter((p) => p.policy.isCommunity).length,
       borderline: filteredPlots.filter((p) => p.policy.isBorderline).length,
       nexus: filteredPlots.filter((p) => p.policy.isNexus).length,
+      mismatches: filteredPlots.filter((p) => p.factionSideMismatch).length,
     };
   }, [filteredPlots]);
 
-  const handleMouseMove = useCallback((event: React.MouseEvent, plot: InfinityPlot) => {
+  const handleMouseMove = useCallback((event: MouseEvent<SVGGElement>, plot: InfinityPlot) => {
     setHoveredPlot(plot);
     setTooltipPosition({ x: event.clientX, y: event.clientY });
   }, []);
 
   const handleMouseLeave = useCallback(() => {
     setHoveredPlot(null);
+  }, []);
+
+  const handlePlotFocus = useCallback((event: FocusEvent<SVGGElement>, plot: InfinityPlot) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setHoveredPlot(plot);
+    setTooltipPosition({ x: rect.left + rect.width / 2, y: rect.top + 8 });
   }, []);
 
   const handlePlotClick = useCallback(
@@ -251,11 +275,21 @@ export default function InfinityMap({
         plot.plotKind === "borderline-25x25"
       ) {
         setZoomedPlot(plot);
-      } else {
-        onSelectPlot(plot);
       }
+
+      onSelectPlot(plot);
     },
     [onSelectPlot]
+  );
+
+  const handlePlotKeyDown = useCallback(
+    (event: KeyboardEvent<SVGGElement>, plot: InfinityPlot) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        handlePlotClick(plot);
+      }
+    },
+    [handlePlotClick]
   );
 
   const changeZoom = useCallback((delta: number) => {
@@ -275,33 +309,47 @@ export default function InfinityMap({
 
   return (
     <div className="mapWrap" id="city-map-capture" ref={containerRef}>
-      <div
-        className="filterBar"
-        style={{
-          marginBottom: 10,
-          display: "flex",
-          gap: 12,
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "sticky",
-          top: 0,
-          zIndex: 3,
-          padding: "8px 10px",
-          background: "rgba(8, 12, 22, 0.82)",
-          backdropFilter: "blur(10px)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: 14,
-            flexWrap: "wrap",
-            alignItems: "center",
-            fontSize: 13,
-          }}
-        >
+      <div className="mapUtilityBar">
+        <div className="mapUtilityGroup">
+          <button
+            type="button"
+            className={`toolbarButton ${showFilters ? "active" : ""}`}
+            onClick={() => setShowFilters((value) => !value)}
+          >
+            {showFilters ? "Hide Filters" : "Show Filters"}
+          </button>
+
+          <button
+            type="button"
+            className={`toolbarButton ${showLegend ? "active" : ""}`}
+            onClick={() => setShowLegend((value) => !value)}
+          >
+            {showLegend ? "Hide Legend" : "Show Legend"}
+          </button>
+        </div>
+
+        <div className="mapUtilityGroup">
+          <span className="mapUtilityText">Visible: {plotStats.total}</span>
+          <span className="mapUtilityText">Zoom: {Math.round(mapZoom * 100)}%</span>
+          {advancedMode && plotStats.mismatches > 0 && (
+            <span className="mapUtilityText warningText">
+              Side corrections: {plotStats.mismatches}
+            </span>
+          )}
+          <button type="button" className="toolbarButton" onClick={() => changeZoom(-0.15)} title="Zoom out">
+            −
+          </button>
+          <button type="button" className="toolbarButton" onClick={resetZoom} title="Reset zoom">
+            Reset
+          </button>
+          <button type="button" className="toolbarButton" onClick={() => changeZoom(0.15)} title="Zoom in">
+            +
+          </button>
+        </div>
+      </div>
+
+      {showFilters && (
+        <div className="mapFilterBar">
           <label>
             <input
               type="checkbox"
@@ -358,58 +406,20 @@ export default function InfinityMap({
             Nexus ({plotStats.nexus})
           </label>
         </div>
+      )}
 
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.8)" }}>
-            Zoom: {Math.round(mapZoom * 100)}%
-          </span>
-
-          <button
-            type="button"
-            className="toolbarButton"
-            onClick={() => changeZoom(-0.15)}
-            title="Zoom out"
-          >
-            −
-          </button>
-
-          <button
-            type="button"
-            className="toolbarButton"
-            onClick={resetZoom}
-            title="Reset zoom"
-          >
-            Reset
-          </button>
-
-          <button
-            type="button"
-            className="toolbarButton"
-            onClick={() => changeZoom(0.15)}
-            title="Zoom in"
-          >
-            +
-          </button>
+      {showLegend && (
+        <div className="mapLegend">
+          <div><span style={{ color: "#ff3b30" }}>■</span> Community</div>
+          <div><span style={{ color: "#1d4cff" }}>■</span> Neutral</div>
+          <div><span style={{ color: "#59ff2b" }}>■</span> Borderline</div>
+          <div><span style={{ color: "#f5c46e" }}>■</span> Personal</div>
+          <div><span style={{ color: "#ffaa33" }}>■</span> Reserved</div>
+          <div><span style={{ color: "#44ff44" }}>■</span> Owned</div>
+          <div><span style={{ color: "#888888" }}>■</span> Locked</div>
+          <div><span style={{ color: "#ffd700" }}>■</span> Nexus</div>
         </div>
-      </div>
-
-      <div className="mapLegend">
-        <div><span style={{ color: "#ff3b30" }}>■</span> Community</div>
-        <div><span style={{ color: "#1d4cff" }}>■</span> Neutral</div>
-        <div><span style={{ color: "#59ff2b" }}>■</span> Borderline</div>
-        <div><span style={{ color: "#f5c46e" }}>■</span> Personal</div>
-        <div><span style={{ color: "#ffaa33" }}>■</span> Reserved</div>
-        <div><span style={{ color: "#44ff44" }}>■</span> Owned</div>
-        <div><span style={{ color: "#888888" }}>■</span> Locked</div>
-        <div><span style={{ color: "#ffd700" }}>■</span> Nexus</div>
-      </div>
+      )}
 
       <div
         style={{
@@ -456,40 +466,13 @@ export default function InfinityMap({
               </feMerge>
             </filter>
 
-            <pattern
-              id="diagonalStripes"
-              patternUnits="userSpaceOnUse"
-              width="8"
-              height="8"
-              patternTransform="rotate(45)"
-            >
-              <line
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="8"
-                stroke="rgba(255,255,255,0.3)"
-                strokeWidth="2"
-              />
+            <pattern id="diagonalStripes" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="8" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
             </pattern>
 
             <pattern id="crossHatch" patternUnits="userSpaceOnUse" width="8" height="8">
-              <line
-                x1="0"
-                y1="0"
-                x2="8"
-                y2="8"
-                stroke="rgba(0,0,0,0.3)"
-                strokeWidth="1"
-              />
-              <line
-                x1="0"
-                y1="8"
-                x2="8"
-                y2="0"
-                stroke="rgba(0,0,0,0.3)"
-                strokeWidth="1"
-              />
+              <line x1="0" y1="0" x2="8" y2="8" stroke="rgba(0,0,0,0.3)" strokeWidth="1" />
+              <line x1="0" y1="8" x2="8" y2="0" stroke="rgba(0,0,0,0.3)" strokeWidth="1" />
             </pattern>
 
             <pattern id="communityPattern" patternUnits="userSpaceOnUse" width="8" height="8">
@@ -497,15 +480,7 @@ export default function InfinityMap({
             </pattern>
 
             <pattern id="borderlinePattern" patternUnits="userSpaceOnUse" width="8" height="8">
-              <rect
-                x="0"
-                y="0"
-                width="8"
-                height="8"
-                fill="none"
-                stroke="rgba(0,0,0,0.2)"
-                strokeWidth="1"
-              />
+              <rect x="0" y="0" width="8" height="8" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
             </pattern>
 
             <pattern id="nexusPattern" patternUnits="userSpaceOnUse" width="8" height="8">
@@ -525,64 +500,40 @@ export default function InfinityMap({
             <div style={{ width: "100%", height: "100%", background: getFactionGlow("right") }} />
           </foreignObject>
 
-          <path
-            d={infinityPath}
-            fill="none"
-            stroke="rgba(245, 214, 149, 0.18)"
-            strokeWidth="28"
-            filter="url(#softGlow)"
-          />
-          <path
-            d={infinityPath}
-            fill="none"
-            stroke="rgba(255,255,255,0.14)"
-            strokeWidth="3"
-          />
+          <path d={infinityPath} fill="none" stroke="rgba(245, 214, 149, 0.18)" strokeWidth="28" filter="url(#softGlow)" />
+          <path d={infinityPath} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="3" />
 
-          <rect
-            x={CENTER_X - 210}
-            y={CENTER_Y - 10}
-            width={420}
-            height={20}
-            rx={8}
-            fill="rgba(245,206,126,0.88)"
-            filter="url(#nexusGlow)"
-          />
-          <rect
-            x={CENTER_X - 10}
-            y={CENTER_Y - 240}
-            width={20}
-            height={480}
-            rx={8}
-            fill="rgba(245,206,126,0.78)"
-            filter="url(#nexusGlow)"
-          />
-          <rect
-            x={CENTER_X - 18}
-            y={CENTER_Y - 18}
-            width={36}
-            height={36}
-            rx={10}
-            fill="rgba(255,232,160,0.96)"
-            filter="url(#nexusGlow)"
-          />
+          <rect x={CENTER_X - 210} y={CENTER_Y - 10} width={420} height={20} rx={8} fill="rgba(245,206,126,0.88)" filter="url(#nexusGlow)" />
+          <rect x={CENTER_X - 10} y={CENTER_Y - 240} width={20} height={480} rx={8} fill="rgba(245,206,126,0.78)" filter="url(#nexusGlow)" />
+          <rect x={CENTER_X - 18} y={CENTER_Y - 18} width={36} height={36} rx={10} fill="rgba(255,232,160,0.96)" filter="url(#nexusGlow)" />
 
           {filteredPlots.map((plot) => {
             const selected = selectedPlot?.id === plot.id;
             const { fill, pattern } = getStatusBasedFill(plot, heatmapMode);
-            const stroke = selected ? "#ffffff" : getFactionStroke(plot.faction);
             const statusStyle = STATUS_STYLES[plot.status] || STATUS_STYLES.free;
             const width = selected ? plot.width * 1.12 : plot.width;
             const height = selected ? plot.height * 1.12 : plot.height;
             const warningGlow = getWarningGlow(plot);
+            const stroke = plot.factionSideMismatch
+              ? "#ff9d9d"
+              : selected
+              ? "#ffffff"
+              : getFactionStroke(plot.faction);
+            const ariaLabel = `${plot.label}, ${plot.plotKind}, ${plot.status}, ${plot.faction}`;
 
             return (
               <g
                 key={plot.id}
                 onClick={() => handlePlotClick(plot)}
-                onMouseMove={(e) => handleMouseMove(e, plot)}
+                onMouseMove={(event) => handleMouseMove(event, plot)}
                 onMouseLeave={handleMouseLeave}
-                style={{ cursor: "pointer" }}
+                onFocus={(event) => handlePlotFocus(event, plot)}
+                onBlur={handleMouseLeave}
+                onKeyDown={(event) => handlePlotKeyDown(event, plot)}
+                tabIndex={0}
+                role="button"
+                aria-label={ariaLabel}
+                style={{ cursor: "pointer", outline: "none" }}
               >
                 <rect
                   x={plot.x - width / 2}
@@ -593,12 +544,10 @@ export default function InfinityMap({
                   ry={plot.plotKind === "personal-5x5" ? 4 : 7}
                   fill={pattern || fill}
                   stroke={stroke}
-                  strokeWidth={selected ? 3 : 1.4}
+                  strokeWidth={plot.factionSideMismatch ? 2.2 : selected ? 3 : 1.4}
                   opacity={statusStyle.opacity}
-                  filter={
-                    warningGlow ||
-                    (plot.plotKind !== "personal-5x5" ? "url(#softGlow)" : undefined)
-                  }
+                  filter={warningGlow || (plot.plotKind !== "personal-5x5" ? "url(#softGlow)" : undefined)}
+                  strokeDasharray={plot.factionSideMismatch ? "4 2" : undefined}
                 />
 
                 {showLabels && (
@@ -617,23 +566,11 @@ export default function InfinityMap({
             );
           })}
 
-          <text
-            x={CENTER_X - 520}
-            y={CENTER_Y + 5}
-            fill="rgba(255,235,190,0.95)"
-            fontSize="26"
-            fontWeight="700"
-          >
+          <text x={CENTER_X - 520} y={CENTER_Y + 5} fill="rgba(255,235,190,0.95)" fontSize="26" fontWeight="700">
             INPINITY
           </text>
 
-          <text
-            x={CENTER_X + 330}
-            y={CENTER_Y + 5}
-            fill="rgba(225,235,255,0.95)"
-            fontSize="26"
-            fontWeight="700"
-          >
+          <text x={CENTER_X + 330} y={CENTER_Y + 5} fill="rgba(225,235,255,0.95)" fontSize="26" fontWeight="700">
             INPHINITY
           </text>
         </svg>
@@ -664,6 +601,12 @@ export default function InfinityMap({
               {hoveredPlot.statusInfo?.inactivityLevel && (
                 <>
                   Activity: {hoveredPlot.statusInfo.inactivityLevel}
+                  <br />
+                </>
+              )}
+              {hoveredPlot.factionSideMismatch && (
+                <>
+                  Side corrected for faction placement
                   <br />
                 </>
               )}
@@ -717,21 +660,8 @@ export default function InfinityMap({
           >
             <h3 style={{ marginTop: 0 }}>{zoomedPlot.label} - Enlarged View</h3>
 
-            <svg
-              width="100%"
-              height="auto"
-              viewBox="0 0 400 400"
-              style={{ display: "block", maxWidth: 520 }}
-            >
-              <rect
-                x="50"
-                y="50"
-                width="300"
-                height="300"
-                fill={getStatusBasedFill(zoomedPlot, heatmapMode).fill}
-                stroke="#ffffff"
-                strokeWidth="2"
-              />
+            <svg width="100%" height="auto" viewBox="0 0 400 400" style={{ display: "block", maxWidth: 520 }}>
+              <rect x="50" y="50" width="300" height="300" fill={getStatusBasedFill(zoomedPlot, heatmapMode).fill} stroke="#ffffff" strokeWidth="2" />
               <text x="200" y="200" textAnchor="middle" fill="white">
                 {zoomedPlot.label}
               </text>

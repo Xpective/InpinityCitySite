@@ -58,16 +58,63 @@ select {
   overflow: hidden;
 }
 
+.panelHint {
+  background: rgba(12, 20, 35, 0.82);
+}
+
 .hero h1 {
   margin: 0 0 10px;
   font-size: 42px;
   line-height: 1.05;
 }
 
+.eyebrow {
+  margin-bottom: 8px;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 214, 147, 0.86);
+}
+
 .subtitle {
   margin: 0 0 18px;
   color: rgba(238, 242, 255, 0.82);
   max-width: 920px;
+}
+
+.heroActionRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.heroTip {
+  color: rgba(238, 242, 255, 0.74);
+  font-size: 14px;
+}
+
+.advancedInfoCard {
+  margin-top: 14px;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.sectionHelp {
+  margin: 0 0 14px;
+  color: rgba(238, 242, 255, 0.76);
+}
+
+.heroActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 16px 0;
 }
 
 .configGrid {
@@ -140,21 +187,66 @@ select {
   );
 }
 
-.toolbar {
+.toolbarPanel {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   margin-bottom: 16px;
 }
 
-.toolbarRow {
+.toolbarTopRow {
   display: flex;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.toolbarTitle {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.toolbarSubtitle {
+  margin: 0;
+  color: rgba(238, 242, 255, 0.72);
+  font-size: 14px;
+}
+
+.toolbarGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.toolbarField {
+  display: grid;
+  gap: 6px;
+}
+
+.toolbarFieldLabel {
+  font-size: 13px;
+  color: rgba(238, 242, 255, 0.82);
+}
+
+.toolbarInlineAction {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.toolbarPillRow {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
+.toolbarPillRowCompact {
+  padding-top: 2px;
+}
+
 .toolbarInput {
-  min-width: 260px;
-  flex: 1;
+  min-width: 0;
+  width: 100%;
   background: rgba(255, 255, 255, 0.06);
   color: #eef2ff;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -170,10 +262,7 @@ select {
   padding: 10px 14px;
   cursor: pointer;
   min-height: 42px;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    opacity 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 }
 
 .toolbarButton:hover {
@@ -195,6 +284,25 @@ select {
   opacity: 0.6;
 }
 
+.toolbarMatches {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.toolbarMatchesGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.toolbarMatchButton {
+  justify-content: flex-start;
+  text-align: left;
+}
+
 .mapWrap {
   position: relative;
   width: 100%;
@@ -208,6 +316,7 @@ select {
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
 .citySvg {
@@ -217,9 +326,48 @@ select {
   min-width: 980px;
 }
 
+.mapUtilityBar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px;
+  background: rgba(8, 12, 22, 0.86);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mapUtilityGroup {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.mapUtilityText {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.warningText {
+  color: #ffb1b1;
+}
+
+.mapFilterBar {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(8, 12, 22, 0.58);
+}
+
 .mapLegend {
   position: absolute;
-  top: 14px;
+  top: 108px;
   right: 14px;
   z-index: 2;
   display: grid;
@@ -249,6 +397,8 @@ select {
   display: grid;
   gap: 20px;
   align-content: start;
+  position: sticky;
+  top: 16px;
 }
 
 .splitPanel {
@@ -281,6 +431,51 @@ select {
   color: rgba(238, 242, 255, 0.9);
   font-size: 14px;
   min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.warningBanner {
+  margin-bottom: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 90, 90, 0.12);
+  border: 1px solid rgba(255, 90, 90, 0.24);
+  color: #ffd0d0;
+}
+
+.infoAccordion {
+  margin-top: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+
+.infoAccordion summary {
+  cursor: pointer;
+  padding: 14px 16px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.infoAccordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.infoAccordion summary::after {
+  content: "+";
+  float: right;
+  opacity: 0.8;
+}
+
+.infoAccordion[open] summary::after {
+  content: "−";
+}
+
+.infoAccordionBody {
+  padding: 0 16px 16px;
+  display: grid;
+  gap: 10px;
 }
 
 .buttonRow {
@@ -324,6 +519,166 @@ select {
   word-break: break-word;
 }
 
+.toolbarHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.toolbarStatusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #eef2ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.toolbarStack {
+  display: grid;
+  gap: 12px;
+}
+
+.toolbarRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.toolbarRowPrimary {
+  align-items: stretch;
+}
+
+.toolbarJumpGroup {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: min(420px, 100%);
+}
+
+.toolbarFilterGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.toolbarDetails {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+}
+
+.toolbarDetailsSummary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 14px;
+  font-weight: 700;
+}
+
+.toolbarDetailsSummary::-webkit-details-marker {
+  display: none;
+}
+
+.toolbarDetailsBody {
+  padding: 0 14px 14px;
+}
+
+.toolbarQuickMatches {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.toolbarQuickMatchButton {
+  justify-content: flex-start;
+}
+
+.mapFilterGroup,
+.mapZoomControls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.mapLegendHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.mapLegendToggle {
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #eef2ff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.mapLegendGrid {
+  display: grid;
+  gap: 6px;
+}
+
+.mapMetaNote {
+  margin: 0 14px 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(238, 242, 255, 0.74);
+  font-size: 12px;
+}
+
+.mapCanvas {
+  min-width: max-content;
+}
+
+.detailSection {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.02);
+  padding: 0 12px 12px;
+}
+
+.detailSectionSummary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 0;
+  font-weight: 700;
+}
+
+.detailSectionSummary::-webkit-details-marker {
+  display: none;
+}
+
+.infoNote {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(238, 242, 255, 0.86);
+  font-size: 13px;
+}
+
+.terminalStack {
+  display: grid;
+  gap: 12px;
+}
+
 select,
 input,
 textarea {
@@ -353,9 +708,9 @@ textarea {
     font-size: 36px;
   }
 
+  .toolbarGrid,
   .cityMapLayout {
     grid-template-columns: 1fr;
-    gap: 16px;
   }
 
   .cityMapPrimary {
@@ -365,17 +720,30 @@ textarea {
   .cityMapSidebar {
     order: 2;
     gap: 16px;
+    position: static;
   }
 
-  .toolbarRow {
+  .toolbarHeader {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .toolbarInput,
-  .toolbarButton {
-    width: 100%;
+  .toolbarJumpGroup {
     min-width: 0;
+    width: 100%;
+  }
+
+  .mapFilterBar {
+    align-items: stretch;
+  }
+
+  .mapFilterGroup,
+  .mapZoomControls {
+    width: 100%;
+  }
+
+  .toolbarInlineAction {
+    grid-template-columns: 1fr;
   }
 
   .mapWrap {
@@ -384,8 +752,12 @@ textarea {
 
   .mapLegend {
     position: static;
-    margin-bottom: 12px;
-    max-width: 100%;
+    margin: 0 12px 12px;
+    max-width: none;
+  }
+
+  .detailsGrid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -441,7 +813,7 @@ textarea {
   }
 
   .citySvg {
-    min-width: 980px;
+    min-width: 760px;
   }
 
   .mapWrap {
@@ -462,7 +834,7 @@ textarea {
   }
 
   .citySvg {
-    min-width: 1100px;
+    min-width: 680px;
   }
 
   .mapWrap {

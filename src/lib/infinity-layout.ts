@@ -105,6 +105,23 @@ export function getInfinityPath(): string {
   return path;
 }
 
+export function getCanonicalSideFromFaction(
+  faction: InfinityFaction
+): "left" | "right" | null {
+  if (faction === "inpinity") return "left";
+  if (faction === "inphinity") return "right";
+  return null;
+}
+
+export function isFactionOnExpectedSide(
+  faction: InfinityFaction,
+  side: "left" | "right" | "center"
+): boolean {
+  const expectedSide = getCanonicalSideFromFaction(faction);
+  if (!expectedSide) return true;
+  return expectedSide === side;
+}
+
 export function getFactionGlow(side: "left" | "right"): string {
   return side === "left"
     ? "radial-gradient(circle at 30% 50%, rgba(255,160,95,0.18), rgba(255,110,70,0.07), transparent 60%)"
@@ -188,7 +205,7 @@ function buildPersonalPlots(): InfinityPlot[] {
   let created = 0;
 
   for (let i = 0; i < steps; i += 1) {
-    const t = (Math.PI * 2 * i) / steps;
+    const t = Math.PI + (Math.PI * 2 * i) / steps;
     const anchor = getLemniscatePoint(t);
 
     const ringOffset = (i % 2 === 0 ? 1 : -1) * (18 + (i % 6) * 7);
@@ -228,6 +245,7 @@ function buildPersonalPlots(): InfinityPlot[] {
       status,
       label: `Q${created}`,
       plotKind,
+      plotId: String(created),
       tier: getTier(distanceToNexus, plotKind),
       policy: buildPolicy(plotKind, faction),
       qubiqProgress: getDefaultQubiqProgress(plotKind),

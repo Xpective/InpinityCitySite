@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { InfinityPlot } from "../../types/infinity";
 import type { PlotEligibility, WalletState } from "../../lib/eligibility";
 import type { ResourceEligibility } from "../../lib/resource-check";
@@ -52,6 +52,7 @@ type Props = {
   buildPlotOptions: BuildPlotOption[];
   activeBuildPlotId: string;
   onSelectActiveBuildPlotId: (plotId: string) => void;
+  showAdvanced?: boolean;
 };
 
 function pretty(value: string): string {
@@ -225,9 +226,9 @@ function getPrimaryAction(props: {
 
   if (plot.policy.isCommunity) {
     return {
-      label: "Community Plot Reserved",
+      label: "Community Plot Later",
       helper:
-        "Community plots are not privately buildable. Shared infrastructure and support flow can come later.",
+        "Community plots are shared infrastructure and are not privately buildable yet.",
       disabled: true,
       action: "none",
     };
@@ -235,7 +236,7 @@ function getPrimaryAction(props: {
 
   if (plot.policy.isBorderline) {
     return {
-      label: "Borderline Crowdfunding Later",
+      label: "Borderline Later",
       helper:
         "Borderline plots are cooperative zones and will use shared contribution later.",
       disabled: true,
@@ -245,9 +246,8 @@ function getPrimaryAction(props: {
 
   if (plot.policy.isNexus) {
     return {
-      label: "Nexus Crowdfunding Later",
-      helper:
-        "Nexus plots are central shared zones and are not privately buildable.",
+      label: "Nexus Later",
+      helper: "Nexus plots are shared central zones and are not privately buildable.",
       disabled: true,
       action: "none",
     };
@@ -256,8 +256,7 @@ function getPrimaryAction(props: {
   if (!eligibility.plotKindAllowed) {
     return {
       label: "Plot Type Not Allowed",
-      helper:
-        "Only personal 5x5 plots can currently enter the private Qubiq flow.",
+      helper: "Only personal 5x5 plots can currently enter the private Qubiq flow.",
       disabled: true,
       action: "none",
     };
@@ -358,7 +357,6 @@ function getPrimaryAction(props: {
       action: "flow",
     };
   }
-
 
   if (startedBuild) {
     return {
@@ -481,6 +479,23 @@ function getCellText(qubiq: QubiqReadState | null, x: number, y: number): string
   return `${x},${y}`;
 }
 
+function CollapsibleSection({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details className="detailSection" open={defaultOpen}>
+      <summary className="detailSectionSummary">{title}</summary>
+      <div style={{ marginTop: 12 }}>{children}</div>
+    </details>
+  );
+}
+
 export default function MintPreparationPanel({
   plot,
   wallet,
@@ -506,6 +521,7 @@ export default function MintPreparationPanel({
   buildPlotOptions,
   activeBuildPlotId,
   onSelectActiveBuildPlotId,
+  showAdvanced = false,
 }: Props) {
   const targetQubiqs = 25;
 
@@ -543,43 +559,75 @@ export default function MintPreparationPanel({
       ? onPrepareContribution
       : undefined;
 
+  const importantReasons = eligibility.reasons.slice(0, 2);
+
   return (
     <section className="panel">
       <h2>Qubiq Build Terminal</h2>
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="terminalStack">
         <div style={panelBoxStyle()}>
-          <strong>Identity</strong>
-          <div>
-            <strong>Wallet:</strong>{" "}
-            {wallet.isConnected ? shortAddress(wallet.address) : "Not connected"}
-          </div>
-          <div>
-            <strong>Chain:</strong> {wallet.chainId ?? "—"}
-          </div>
-          <div>
-            <strong>Flow Step:</strong>{" "}
+          <strong>Current Action</strong>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <span style={badgeStyle(flowBadgeKind)}>{getFlowLabel(flowStep)}</span>
+            <span className="toolbarStatusPill">{primaryAction.label}</span>
+          </div>
+          <div style={{ color: "#cfd6e4" }}>{primaryAction.helper}</div>
+          {!!importantReasons.length && (
+            <div className="infoNote">
+              {importantReasons.map((reason, index) => (
+                <div key={`${reason}-${index}`}>• {reason}</div>
+              ))}
+            </div>
+          )}
+          {flowResult && (
+            <div
+              style={{
+                padding: 10,
+                borderRadius: 10,
+                background: flowResult.ok
+                  ? "rgba(89,255,43,0.10)"
+                  : "rgba(255,90,90,0.10)",
+                border: flowResult.ok
+                  ? "1px solid rgba(89,255,43,0.25)"
+                  : "1px solid rgba(255,90,90,0.25)",
+              }}
+            >
+              <div>
+                <strong>Result:</strong> {flowResult.code}
+              </div>
+              <div style={{ marginTop: 4 }}>{flowResult.message}</div>
+              {showAdvanced && txHash && (
+                <div style={{ marginTop: 6 }}>
+                  <strong>TX:</strong> {txHash}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div style={panelBoxStyle()}>
+          <strong>Build Overview</strong>
+          <div>
+            <strong>Selected Plot:</strong> {plot?.label || "—"}
           </div>
           <div>
-            <strong>Wallet Faction:</strong>{" "}
-            {wallet.chosenFaction && wallet.chosenFaction !== "none"
-              ? pretty(wallet.chosenFaction)
-              : "Not chosen yet"}
+            <strong>Onchain Plot ID:</strong> {effectivePlotId}
           </div>
           <div>
-            <strong>City Key:</strong>{" "}
-            {wallet.hasCityKey == null
-              ? "Unknown"
-              : wallet.hasCityKey
-              ? "Set"
-              : "Not set"}
+            <strong>Faction:</strong> {plot ? pretty(plot.faction) : "—"}
           </div>
           <div>
-            <strong>Faction Rule:</strong> One wallet chooses one faction and
-            builds only within that side. Community, Borderline and Nexus remain
-            shared / later-governed zones.
+            <strong>Side:</strong> {plot ? pretty(plot.side) : "—"}
           </div>
+          <div>
+            <strong>Selected Cell:</strong> ({selectedQubiqCell.x}, {selectedQubiqCell.y})
+          </div>
+          {plot?.layoutNote && (
+            <div className="infoNote">
+              <strong>Placement note:</strong> {plot.layoutNote}
+            </div>
+          )}
         </div>
 
         <div style={panelBoxStyle()}>
@@ -613,10 +661,6 @@ export default function MintPreparationPanel({
           ) : (
             <div>No InpinityNFT city keys found in this wallet.</div>
           )}
-
-          <div style={{ color: "#cfd6e4" }}>
-            The selected NFT will be used as your City Key for registry setup.
-          </div>
         </div>
 
         <div style={panelBoxStyle()}>
@@ -646,50 +690,11 @@ export default function MintPreparationPanel({
           ) : (
             <div>No reserved or active personal plots detected yet.</div>
           )}
-
-          <div style={{ color: "#cfd6e4" }}>
-            Use this selector to continue building on a plot you already reserved or started.
-          </div>
-        </div>
-
-        <div style={panelBoxStyle()}>
-          <strong>Plot Status</strong>
-          <div>
-            <strong>Selected Plot:</strong> {plot?.label || "—"}
-          </div>
-          <div>
-            <strong>Onchain Plot ID:</strong> {effectivePlotId}
-          </div>
-          <div>
-            <strong>Kind:</strong> {plot ? pretty(plot.plotKind) : "—"}
-          </div>
-          <div>
-            <strong>Status:</strong> {plot ? pretty(plot.status) : "—"}
-          </div>
-          <div>
-            <strong>Faction:</strong> {plot ? pretty(plot.faction) : "—"}
-          </div>
-          <div>
-            <strong>Tier:</strong> {plot ? pretty(plot.tier) : "—"}
-          </div>
-          <div>
-            <strong>Estimated Plot Value:</strong>{" "}
-            {plot
-              ? `${plot.valueModel?.finalEstimate || plot.priceEstimate} PIT`
-              : "—"}
-          </div>
-          <div>
-            <strong>Private Build Allowed:</strong>{" "}
-            {plot ? (plot.policy.isPersonal ? "Yes" : "No") : "—"}
-          </div>
         </div>
 
         <div style={panelBoxStyle()}>
           <strong>Qubiq Progress</strong>
 
-          <div>
-            <strong>Plot Size:</strong> 5x5
-          </div>
           <div>
             <strong>Completed Qubiqs:</strong> {currentQubiqs} / {targetQubiqs}
           </div>
@@ -709,10 +714,6 @@ export default function MintPreparationPanel({
                 ? "Yes"
                 : "No"
               : "—"}
-          </div>
-          <div>
-            <strong>Selected Cell:</strong> ({selectedQubiqCell.x},{" "}
-            {selectedQubiqCell.y})
           </div>
 
           <div
@@ -764,6 +765,7 @@ export default function MintPreparationPanel({
                   title={`Qubiq (${x}, ${y})${
                     qubiq ? ` – ${getQubiqStateLabel(qubiq)}` : ""
                   }`}
+                  aria-label={`Select Qubiq cell ${x}, ${y}`}
                 >
                   {getCellText(qubiq, x, y)}
                 </button>
@@ -787,187 +789,7 @@ export default function MintPreparationPanel({
           </div>
         </div>
 
-        <div style={panelBoxStyle()}>
-          <strong>Selected Qubiq Live Read</strong>
-
-          {liveLoading && <div>Loading live Qubiq data...</div>}
-          {liveError && <div style={{ color: "#ff9d9d" }}>{liveError}</div>}
-
-          {!liveLoading && !liveError && (
-            <>
-              <div>
-                <strong>Cell:</strong> ({selectedQubiqCell.x},{" "}
-                {selectedQubiqCell.y})
-              </div>
-              <div>
-                <strong>State:</strong> {getQubiqStateLabel(liveQubiq)}
-              </div>
-              <div>
-                <strong>Completion:</strong>{" "}
-                {liveQubiq ? `${liveQubiq.completionPercent}%` : "—"}
-              </div>
-              <div>
-                <strong>Oil:</strong>{" "}
-                {liveQubiq
-                  ? `${liveQubiq.oilDeposited.toString()} / ${liveQubiq.oilRequired.toString()}`
-                  : "—"}
-              </div>
-              <div>
-                <strong>Lemons:</strong>{" "}
-                {liveQubiq
-                  ? `${liveQubiq.lemonsDeposited.toString()} / ${liveQubiq.lemonsRequired.toString()}`
-                  : "—"}
-              </div>
-              <div>
-                <strong>Iron:</strong>{" "}
-                {liveQubiq
-                  ? `${liveQubiq.ironDeposited.toString()} / ${liveQubiq.ironRequired.toString()}`
-                  : "—"}
-              </div>
-              <div>
-                <strong>Used Aether:</strong>{" "}
-                {liveQubiq ? (liveQubiq.usedAether ? "Yes" : "No") : "—"}
-              </div>
-              <div>
-                <strong>Last Contributor:</strong>{" "}
-                {liveQubiq ? shortAddress(liveQubiq.lastContributor) : "—"}
-              </div>
-            </>
-          )}
-        </div>
-
-        <div style={panelBoxStyle()}>
-          <strong>Resource Check</strong>
-
-          <div>
-            Oil (wallet / needed):{" "}
-            {resourceEligibility
-              ? `${resourceEligibility.balances.oil.toString()} / ${resourceEligibility.required.oil.toString()}`
-              : "—"}
-          </div>
-
-          <div>
-            Lemons (wallet / needed):{" "}
-            {resourceEligibility
-              ? `${resourceEligibility.balances.lemons.toString()} / ${resourceEligibility.required.lemons.toString()}`
-              : "—"}
-          </div>
-
-          <div>
-            Iron (wallet / needed):{" "}
-            {resourceEligibility
-              ? `${resourceEligibility.balances.iron.toString()} / ${resourceEligibility.required.iron.toString()}`
-              : "—"}
-          </div>
-
-          <div style={{ color: "#cfd6e4" }}>
-            Need values use the live remaining amount for the selected Qubiq cell when
-            available; otherwise they fall back to the default single-cell cost.
-          </div>
-
-          {resourceEligibility && !resourceEligibility.ready && (
-            <>
-              <div>Missing Oil: {resourceEligibility.missing.oil.toString()}</div>
-              <div>
-                Missing Lemons: {resourceEligibility.missing.lemons.toString()}
-              </div>
-              <div>Missing Iron: {resourceEligibility.missing.iron.toString()}</div>
-            </>
-          )}
-        </div>
-
-        <div style={panelBoxStyle()}>
-          <strong>Eligibility Checks</strong>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {eligibility.checks.map((check) => (
-              <span
-                key={check.key}
-                style={badgeStyle(check.passed ? "ok" : "bad")}
-              >
-                {check.passed ? "✓" : "✗"} {check.label}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div style={panelBoxStyle()}>
-          <strong>Action Step</strong>
-
-          {flowResult ? (
-            <div
-              style={{
-                padding: 10,
-                borderRadius: 10,
-                background: flowResult.ok
-                  ? "rgba(89,255,43,0.10)"
-                  : "rgba(255,90,90,0.10)",
-                border: flowResult.ok
-                  ? "1px solid rgba(89,255,43,0.25)"
-                  : "1px solid rgba(255,90,90,0.25)",
-              }}
-            >
-              <div>
-                <strong>Result:</strong> {flowResult.code}
-              </div>
-              <div style={{ marginTop: 4 }}>{flowResult.message}</div>
-              {txHash && (
-                <div style={{ marginTop: 6 }}>
-                  <strong>TX:</strong> {txHash}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>Choose a plot and prepare the next Qubiq contribution step.</div>
-          )}
-
-          <div
-            style={{
-              marginTop: 8,
-              padding: 10,
-              borderRadius: 10,
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <div>
-              <strong>Current Action:</strong> {primaryAction.label}
-            </div>
-            <div style={{ marginTop: 4, color: "#cfd6e4" }}>
-              {primaryAction.helper}
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gap: 8,
-              marginTop: 8,
-            }}
-          >
-            <div>• Set City Key</div>
-            <div>• Choose Faction</div>
-            <div>• Reserve Plot</div>
-            <div>• Approve Resources</div>
-            <div>• Contribute Qubiq</div>
-            <div>• Plot completes automatically at 25 / 25</div>
-          </div>
-        </div>
-
-        <div style={panelBoxStyle()}>
-          <strong>Rules / Notes</strong>
-          {eligibility.reasons.map((reason, index) => (
-            <div key={index}>• {reason}</div>
-          ))}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="buttonRow" style={{ marginTop: 0 }}>
           <button
             className="toolbarButton"
             disabled={primaryAction.disabled}
@@ -986,6 +808,169 @@ export default function MintPreparationPanel({
             Reset Cell
           </button>
         </div>
+
+        <CollapsibleSection title="Wallet, rules and helper checks" defaultOpen={showAdvanced}>
+          <div style={panelBoxStyle()}>
+            <strong>Identity</strong>
+            <div>
+              <strong>Wallet:</strong>{" "}
+              {wallet.isConnected ? shortAddress(wallet.address) : "Not connected"}
+            </div>
+            <div>
+              <strong>Chain:</strong> {wallet.chainId ?? "—"}
+            </div>
+            <div>
+              <strong>Wallet Faction:</strong>{" "}
+              {wallet.chosenFaction && wallet.chosenFaction !== "none"
+                ? pretty(wallet.chosenFaction)
+                : "Not chosen yet"}
+            </div>
+            <div>
+              <strong>City Key:</strong>{" "}
+              {wallet.hasCityKey == null
+                ? "Unknown"
+                : wallet.hasCityKey
+                ? "Set"
+                : "Not set"}
+            </div>
+            <div>
+              <strong>Faction Rule:</strong> One wallet chooses one faction and builds only
+              within that side.
+            </div>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          <div style={panelBoxStyle()}>
+            <strong>Eligibility Checks</strong>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {eligibility.checks.map((check) => (
+                <span
+                  key={check.key}
+                  style={badgeStyle(check.passed ? "ok" : "bad")}
+                >
+                  {check.passed ? "✓" : "✗"} {check.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          <div style={panelBoxStyle()}>
+            <strong>Step Guide</strong>
+            <div>• Set City Key</div>
+            <div>• Choose Faction</div>
+            <div>• Reserve Plot</div>
+            <div>• Approve Resources</div>
+            <div>• Contribute Qubiq</div>
+            <div>• Plot completes automatically at 25 / 25</div>
+          </div>
+
+          {!!eligibility.reasons.length && (
+            <>
+              <div style={{ height: 12 }} />
+              <div style={panelBoxStyle()}>
+                <strong>Rules / Notes</strong>
+                {eligibility.reasons.map((reason, index) => (
+                  <div key={`${reason}-${index}`}>• {reason}</div>
+                ))}
+              </div>
+            </>
+          )}
+        </CollapsibleSection>
+
+        <CollapsibleSection title="Live readouts" defaultOpen={showAdvanced}>
+          <div style={panelBoxStyle()}>
+            <strong>Selected Qubiq Live Read</strong>
+
+            {liveLoading && <div>Loading live Qubiq data...</div>}
+            {liveError && <div style={{ color: "#ff9d9d" }}>{liveError}</div>}
+
+            {!liveLoading && !liveError && (
+              <>
+                <div>
+                  <strong>Cell:</strong> ({selectedQubiqCell.x}, {selectedQubiqCell.y})
+                </div>
+                <div>
+                  <strong>State:</strong> {getQubiqStateLabel(liveQubiq)}
+                </div>
+                <div>
+                  <strong>Completion:</strong>{" "}
+                  {liveQubiq ? `${liveQubiq.completionPercent}%` : "—"}
+                </div>
+                <div>
+                  <strong>Oil:</strong>{" "}
+                  {liveQubiq
+                    ? `${liveQubiq.oilDeposited.toString()} / ${liveQubiq.oilRequired.toString()}`
+                    : "—"}
+                </div>
+                <div>
+                  <strong>Lemons:</strong>{" "}
+                  {liveQubiq
+                    ? `${liveQubiq.lemonsDeposited.toString()} / ${liveQubiq.lemonsRequired.toString()}`
+                    : "—"}
+                </div>
+                <div>
+                  <strong>Iron:</strong>{" "}
+                  {liveQubiq
+                    ? `${liveQubiq.ironDeposited.toString()} / ${liveQubiq.ironRequired.toString()}`
+                    : "—"}
+                </div>
+                <div>
+                  <strong>Used Aether:</strong>{" "}
+                  {liveQubiq ? (liveQubiq.usedAether ? "Yes" : "No") : "—"}
+                </div>
+                <div>
+                  <strong>Last Contributor:</strong>{" "}
+                  {liveQubiq ? shortAddress(liveQubiq.lastContributor) : "—"}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          <div style={panelBoxStyle()}>
+            <strong>Resource Check</strong>
+
+            <div>
+              Oil (wallet / needed):{" "}
+              {resourceEligibility
+                ? `${resourceEligibility.balances.oil.toString()} / ${resourceEligibility.required.oil.toString()}`
+                : "—"}
+            </div>
+
+            <div>
+              Lemons (wallet / needed):{" "}
+              {resourceEligibility
+                ? `${resourceEligibility.balances.lemons.toString()} / ${resourceEligibility.required.lemons.toString()}`
+                : "—"}
+            </div>
+
+            <div>
+              Iron (wallet / needed):{" "}
+              {resourceEligibility
+                ? `${resourceEligibility.balances.iron.toString()} / ${resourceEligibility.required.iron.toString()}`
+                : "—"}
+            </div>
+
+            <div style={{ color: "#cfd6e4" }}>
+              Need values use the live remaining amount for the selected Qubiq cell when
+              available; otherwise they fall back to the default single-cell cost.
+            </div>
+
+            {resourceEligibility && !resourceEligibility.ready && (
+              <>
+                <div>Missing Oil: {resourceEligibility.missing.oil.toString()}</div>
+                <div>
+                  Missing Lemons: {resourceEligibility.missing.lemons.toString()}
+                </div>
+                <div>Missing Iron: {resourceEligibility.missing.iron.toString()}</div>
+              </>
+            )}
+          </div>
+        </CollapsibleSection>
       </div>
     </section>
   );

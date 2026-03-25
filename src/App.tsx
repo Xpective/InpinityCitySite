@@ -148,11 +148,45 @@ function buildPlotOptionLabel(plot: InfinityPlot): string {
   return `${idPart}${factionPart}${statusPart}`;
 }
 
+function shortAddress(value?: string | null): string {
+  if (!value) return "—";
+  return value.length > 10 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
+}
+
+function readStoredFlag(key: string, fallback: boolean): boolean {
+  if (typeof window === "undefined") return fallback;
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw == null) return fallback;
+    return raw === "1";
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStoredFlag(key: string, value: boolean): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(key, value ? "1" : "0");
+  } catch {
+    // ignore storage failures
+  }
+}
+
 export default function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [jumpTarget, setJumpTarget] = useState("");
-  const [showLabels, setShowLabels] = useState(true);
-  const [heatmapMode, setHeatmapMode] = useState(false);
+  const [showLabels, setShowLabels] = useState(() =>
+    readStoredFlag("inpinity-city.show-labels", true)
+  );
+  const [heatmapMode, setHeatmapMode] = useState(() =>
+    readStoredFlag("inpinity-city.heatmap-mode", false)
+  );
+  const [showAdvanced, setShowAdvanced] = useState(() =>
+    readStoredFlag("inpinity-city.advanced-mode", false)
+  );
 
   const [availabilityFilter, setAvailabilityFilter] =
     useState<AvailabilityFilter>("all");
@@ -201,6 +235,18 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    writeStoredFlag("inpinity-city.show-labels", showLabels);
+  }, [showLabels]);
+
+  useEffect(() => {
+    writeStoredFlag("inpinity-city.heatmap-mode", heatmapMode);
+  }, [heatmapMode]);
+
+  useEffect(() => {
+    writeStoredFlag("inpinity-city.advanced-mode", showAdvanced);
+  }, [showAdvanced]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadDashboard() {
@@ -210,7 +256,7 @@ export default function App() {
 
         const data = await retry(
           async () => {
-            return await requestGraphQL<DashboardQueryResult>(CITY_DASHBOARD_QUERY);
+            return await requestGraphQL(CITY_DASHBOARD_QUERY);
           },
           {
             maxRetries: 3,
@@ -627,6 +673,11 @@ export default function App() {
     };
   }, [dashboard]);
 
+  const selectedPlotSummary = effectiveSelectedPlot?.label || "No plot selected";
+  const selectedFactionSummary = effectiveSelectedPlot
+    ? `${effectiveSelectedPlot.faction} · ${effectiveSelectedPlot.side}`
+    : "—";
+
   async function handlePrepareQubiqContribution(): Promise<void> {
     if (!wallet.address) {
       await handleConnectWallet();
@@ -701,31 +752,43 @@ export default function App() {
       <section className="hero panel">
         <div className="eyebrow">INPINITY CITY</div>
         <h1>Reserve your Qubiq</h1>
-        <p>
-          Explore city data, inspect crafting assets, and prepare the purchase flow
-          for Qubiqs on Inpinity City.
+        <p className="subtitle">
+          Explore city data, inspect plots and continue the Qubiq build flow without
+          exposing every helper panel by default.
         </p>
+
+        <div className="heroActionRow">
+          <button
+            type="button"
+            className={`toolbarButton ${showAdvanced ? "active" : ""}`}
+            onClick={() => setShowAdvanced((value) => !value)}
+          >
+            {showAdvanced ? "Hide Advanced" : "Show Advanced"}
+          </button>
+
+          {!wallet.isConnected && (
+            <button type="button" className="toolbarButton" onClick={handleConnectWallet}>
+              Connect Wallet
+            </button>
+          )}
+
+          <div className="heroTip">
+            Mobile keeps the map first, stats second and the build terminal below.
+          </div>
+        </div>
 
         <div className="cards">
           <div className="card">
-            <div className="muted">Chain ID</div>
-            <strong>{CONFIG.chainId}</strong>
+            <div className="muted">Wallet</div>
+            <strong>{wallet.isConnected ? shortAddress(wallet.address) : "not connected"}</strong>
           </div>
           <div className="card">
-            <div className="muted">Subgraph Proxy</div>
-            <strong>{CONFIG.subgraphUrl}</strong>
+            <div className="muted">Selected Plot</div>
+            <strong>{selectedPlotSummary}</strong>
           </div>
           <div className="card">
-            <div className="muted">CityRegistry</div>
-            <strong>{CONFIG.cityRegistryAddress || "missing"}</strong>
-          </div>
-          <div className="card">
-            <div className="muted">CityLand</div>
-            <strong>{CONFIG.cityLandAddress || "missing"}</strong>
-          </div>
-          <div className="card">
-            <div className="muted">CityConfig</div>
-            <strong>{cityConfigSnapshot ? "loaded" : "loading / unavailable"}</strong>
+            <div className="muted">Faction / Side</div>
+            <strong>{selectedFactionSummary}</strong>
           </div>
           <div className="card">
             <div className="muted">City Key</div>
@@ -738,107 +801,120 @@ export default function App() {
             </strong>
           </div>
           <div className="card">
-            <div className="muted">Owned City Keys</div>
-            <strong>{ownedCityKeys.length}</strong>
+            <div className="muted">Active Build Plot</div>
+            <strong>{activeBuildPlotId || reservedPlotId || "—"}</strong>
           </div>
           <div className="card">
-            <div className="muted">Wallet Faction</div>
-            <strong>{wallet.chosenFaction || "not set / unknown"}</strong>
-          </div>
-          <div className="card">
-            <div className="muted">Flow Step</div>
+            <div className="muted">Flow</div>
             <strong>{txStep}</strong>
           </div>
         </div>
 
-        {(reservedPlotId || txHash || activeBuildPlotId) && (
-          <div
-            style={{
-              marginTop: 14,
-              display: "grid",
-              gap: 6,
-              padding: 12,
-              borderRadius: 12,
-              background: "rgba(255,255,255,0.035)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
+        {showAdvanced && (
+          <div className="advancedInfoCard">
             <div>
-              <strong>Reserved Plot ID:</strong> {reservedPlotId || "—"}
+              <strong>Chain:</strong> {CONFIG.chainId}
             </div>
             <div>
-              <strong>Active Build Plot ID:</strong> {activeBuildPlotId || "—"}
+              <strong>Subgraph:</strong> {CONFIG.subgraphUrl}
             </div>
             <div>
-              <strong>Selected Qubiq Cell:</strong> ({selectedQubiqCell.x},{" "}
-              {selectedQubiqCell.y})
+              <strong>CityRegistry:</strong> {CONFIG.cityRegistryAddress || "missing"}
             </div>
             <div>
-              <strong>Latest TX:</strong> {txHash || "—"}
+              <strong>CityLand:</strong> {CONFIG.cityLandAddress || "missing"}
             </div>
+            <div>
+              <strong>CityConfig:</strong> {cityConfigSnapshot ? "loaded" : "loading / unavailable"}
+            </div>
+            <div>
+              <strong>Owned City Keys:</strong> {ownedCityKeys.length}
+            </div>
+            <div>
+              <strong>Wallet Faction:</strong> {wallet.chosenFaction || "not set / unknown"}
+            </div>
+            {(reservedPlotId || txHash || activeBuildPlotId) && (
+              <>
+                <div>
+                  <strong>Reserved Plot ID:</strong> {reservedPlotId || "—"}
+                </div>
+                <div>
+                  <strong>Selected Qubiq Cell:</strong> ({selectedQubiqCell.x}, {selectedQubiqCell.y})
+                </div>
+                <div>
+                  <strong>Latest TX:</strong> {txHash || "—"}
+                </div>
+              </>
+            )}
           </div>
         )}
       </section>
 
-      <section className="panel">
-        <h2>City Dashboard</h2>
+      {showAdvanced && (
+        <section className="panel">
+          <h2>City Dashboard</h2>
 
-        <ErrorBoundary
-          onError={(caughtError) => console.error("Dashboard ErrorBoundary:", caughtError)}
-          resetKeys={[dashboard]}
-        >
-          {loading && <LoadingSpinner text="Loading city data..." />}
+          <ErrorBoundary
+            onError={(caughtError) => console.error("Dashboard ErrorBoundary:", caughtError)}
+            resetKeys={[dashboard]}
+          >
+            {loading && <LoadingSpinner text="Loading city data..." />}
 
-          {!loading && error && (
-            <ErrorMessage
-              error={error}
-              onRetry={handleRetry}
-              variant="card"
-              showDetails={import.meta.env.DEV}
-            />
-          )}
+            {!loading && error && (
+              <ErrorMessage
+                error={error}
+                onRetry={handleRetry}
+                variant="card"
+                showDetails={import.meta.env.DEV}
+              />
+            )}
 
-          {!loading && !error && dashboardCounts && (
-            <div className="cards">
-              <div className="card">
-                <div className="muted">Indexer Block</div>
-                <strong>{dashboardCounts.indexerBlock}</strong>
+            {!loading && !error && dashboardCounts && (
+              <div className="cards">
+                <div className="card">
+                  <div className="muted">Indexer Block</div>
+                  <strong>{dashboardCounts.indexerBlock}</strong>
+                </div>
+                <div className="card">
+                  <div className="muted">Weapon Definitions</div>
+                  <strong>{dashboardCounts.weaponDefinitions}</strong>
+                </div>
+                <div className="card">
+                  <div className="muted">Weapon Instances</div>
+                  <strong>{dashboardCounts.weaponInstances}</strong>
+                </div>
+                <div className="card">
+                  <div className="muted">Materia Definitions</div>
+                  <strong>{dashboardCounts.materiaDefinitions}</strong>
+                </div>
+                <div className="card">
+                  <div className="muted">Plots</div>
+                  <strong>{dashboardCounts.plots}</strong>
+                </div>
+                <div className="card">
+                  <div className="muted">Players</div>
+                  <strong>{dashboardCounts.players}</strong>
+                </div>
+                <div className="card">
+                  <div className="muted">Status Infos</div>
+                  <strong>{dashboardCounts.plotStatusInfos}</strong>
+                </div>
+                <div className="card">
+                  <div className="muted">Provenances</div>
+                  <strong>{dashboardCounts.plotProvenances}</strong>
+                </div>
               </div>
-              <div className="card">
-                <div className="muted">Weapon Definitions</div>
-                <strong>{dashboardCounts.weaponDefinitions}</strong>
-              </div>
-              <div className="card">
-                <div className="muted">Weapon Instances</div>
-                <strong>{dashboardCounts.weaponInstances}</strong>
-              </div>
-              <div className="card">
-                <div className="muted">Materia Definitions</div>
-                <strong>{dashboardCounts.materiaDefinitions}</strong>
-              </div>
-              <div className="card">
-                <div className="muted">Plots</div>
-                <strong>{dashboardCounts.plots}</strong>
-              </div>
-              <div className="card">
-                <div className="muted">Players</div>
-                <strong>{dashboardCounts.players}</strong>
-              </div>
-              <div className="card">
-                <div className="muted">Status Infos</div>
-                <strong>{dashboardCounts.plotStatusInfos}</strong>
-              </div>
-              <div className="card">
-                <div className="muted">Provenances</div>
-                <strong>{dashboardCounts.plotProvenances}</strong>
-              </div>
-            </div>
-          )}
-        </ErrorBoundary>
-      </section>
+            )}
+          </ErrorBoundary>
+        </section>
+      )}
 
       <section className="panel">
         <h2>Infinity City Map</h2>
+        <p className="sectionHelp">
+          Map first, rarity and city stats second, build details afterwards. Advanced
+          mode keeps helper and diagnostics available without crowding the default UI.
+        </p>
 
         <CityToolbar
           plots={hydratedPlots}
@@ -856,6 +932,8 @@ export default function App() {
           specialFilter={specialFilter}
           onSpecialFilterChange={setSpecialFilter}
           onExportPng={downloadMapPng}
+          showAdvanced={showAdvanced}
+          onToggleAdvanced={() => setShowAdvanced((value) => !value)}
         />
 
         <div className="cityMapLayout">
@@ -886,6 +964,7 @@ export default function App() {
                 }}
                 showLabels={showLabels}
                 heatmapMode={heatmapMode}
+                advancedMode={showAdvanced}
               />
             </ErrorBoundary>
 
@@ -896,6 +975,7 @@ export default function App() {
             <PlotDetails
               plot={effectiveSelectedPlot}
               onToggleFavorite={handleToggleFavorite}
+              showAdvanced={showAdvanced}
             />
 
             <MintPreparationPanel
@@ -923,24 +1003,27 @@ export default function App() {
               buildPlotOptions={buildPlotOptions}
               activeBuildPlotId={activeBuildPlotId}
               onSelectActiveBuildPlotId={setActiveBuildPlotId}
+              showAdvanced={showAdvanced}
             />
           </aside>
         </div>
       </section>
 
-      <section className="panel">
-        <h2>Marriage phase: mock layout + live subgraph</h2>
-        <p>
-          The ∞ layout stays visual-first. Real subgraph data is now bound onto the
-          city vision through the merge layer, while registry/land flow is prepared
-          for real reservation and Qubiq contribution.
-        </p>
-        <p style={{ marginBottom: 0 }}>
-          Next step: upgrade MintPreparationPanel into a real build terminal with
-          action sections, approval state, flow messaging, active build plot
-          selection, and Qubiq cell control.
-        </p>
-      </section>
+      {showAdvanced && (
+        <section className="panel panelHint">
+          <h2>Implementation Notes</h2>
+          <p>
+            Personal plot numbering now starts on the Inpinity side and live personal
+            plots are assigned by faction side before hydration so Q-labels do not drift
+            onto the opposite loop.
+          </p>
+          <p style={{ marginBottom: 0 }}>
+            If you later add a canonical coordinate source from contracts or the
+            subgraph, keep the current side-correction warnings as a safeguard instead
+            of silently trusting synthetic slots.
+          </p>
+        </section>
+      )}
     </div>
   );
 }

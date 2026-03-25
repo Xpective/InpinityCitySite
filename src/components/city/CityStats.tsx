@@ -32,6 +32,7 @@ export default function CityStats({ plots }: Props) {
   const warning = plots.filter((p) => p.statusInfo?.inactivityLevel === "warning").length;
   const critical = plots.filter((p) => p.statusInfo?.inactivityLevel === "critical").length;
   const overdue = plots.filter((p) => p.statusInfo?.maintenanceLevel === "overdue").length;
+  const correctedPlacement = plots.filter((p) => p.layoutState === "corrected" || p.factionSideMismatch).length;
 
   const tierCounts = countBy(plots.map((p) => p.tier));
   const rarityCounts = countBy(plots.map((p) => p.rarity));
@@ -111,6 +112,11 @@ export default function CityStats({ plots }: Props) {
         <div className="statCard">
           <div className="statLabel">Activity Warning</div>
           <div className="statValue">{warning}</div>
+        </div>
+
+        <div className="statCard">
+          <div className="statLabel">Faction Side Fixes</div>
+          <div className="statValue">{correctedPlacement}</div>
         </div>
       </div>
 
