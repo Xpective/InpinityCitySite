@@ -1,40 +1,52 @@
-import type { CodegenConfig } from '@graphql-codegen/cli';
+import { existsSync } from "node:fs";
+import type { CodegenConfig } from "@graphql-codegen/cli";
+
+const LOCAL_SCHEMA_CANDIDATES = [
+  "./root-schema.json",
+  "./src/types/generated/schema.graphql",
+];
+
+const localSchema = LOCAL_SCHEMA_CANDIDATES.find((candidate) => existsSync(candidate));
+const remoteSchema =
+  process.env.CODEGEN_SCHEMA_URL?.trim() ||
+  process.env.VITE_SUBGRAPH_URL?.trim() ||
+  "https://api.city.inpinity.online/graphql";
+
+const schema = localSchema || remoteSchema;
 
 const config: CodegenConfig = {
-  schema: 'https://api.city.inpinity.online/graphql',
-  documents: ['src/lib/queries.ts'],
+  schema,
+  documents: ["src/lib/queries.ts"],
   generates: {
-    './src/types/generated/': {
-      preset: 'client',
+    "./src/types/generated/": {
+      preset: "client",
       presetConfig: {
-        gqlTagName: 'gql',
+        gqlTagName: "gql",
       },
       config: {
         strictScalars: true,
+        useTypeImports: true,
         scalars: {
-          BigInt: 'string',
-          Bytes: 'string',
-          BigDecimal: 'string',
-          Int8: 'string',
-          Timestamp: 'string',
+          BigInt: "string",
+          Bytes: "string",
+          BigDecimal: "string",
+          Int8: "string",
+          Timestamp: "string",
         },
         namingConvention: {
-          enumValues: 'keep', // <-- wichtig, um Duplikate zu vermeiden
+          enumValues: "keep",
         },
-        allowPartialOutput: true,
-        skipValidation: true,
-        validationRules: [],
       },
     },
-    './src/types/generated/schema.graphql': {
-      plugins: ['schema-ast'],
+    "./src/types/generated/schema.graphql": {
+      plugins: ["schema-ast"],
     },
   },
   hooks: {
-    afterAllFileWrite: ['prettier --write'],
+    afterAllFileWrite: ["prettier --write"],
   },
+  overwrite: true,
   ignoreNoDocuments: true,
-  allowPartialResults: true,
 };
 
 export default config;

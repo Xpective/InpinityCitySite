@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getAllPlotQubiqStates,
   getPlotCompletionState,
@@ -6,7 +6,7 @@ import {
   type PlotCompletionState,
   type PlotQubiqMap,
   type QubiqReadState,
-} from "../lib/city-land";
+} from "../src/lib/city-land";
 
 type State = {
   loading: boolean;
@@ -14,6 +14,11 @@ type State = {
   completion: PlotCompletionState | null;
   qubiq: QubiqReadState | null;
   allQubiqs: PlotQubiqMap;
+};
+
+type InternalState = State & {
+  loadingPlot: boolean;
+  loadingCell: boolean;
 };
 
 function normalizePlotId(plotId: string | null | undefined): bigint | null {
@@ -41,84 +46,149 @@ function emptyQubiqMap(): PlotQubiqMap {
   return map;
 }
 
+function createEmptyState(): InternalState {
+  return {
+    loading: false,
+    loadingPlot: false,
+    loadingCell: false,
+    error: null,
+    completion: null,
+    qubiq: null,
+    allQubiqs: emptyQubiqMap(),
+  };
+}
+
 export function useLivePlotProgress(
   plotId?: string | null,
   cell?: { x: number; y: number } | null,
   refreshKey?: number
 ): State {
-  const [state, setState] = useState<State>({
-    loading: false,
-    error: null,
-    completion: null,
-    qubiq: null,
-    allQubiqs: emptyQubiqMap(),
-  });
+  const [state, setState] = useState<InternalState>(createEmptyState);
+  const normalizedPlotId = useMemo(() => normalizePlotId(plotId), [plotId]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
-      const normalizedPlotId = normalizePlotId(plotId);
-
+    async function loadPlotState() {
       if (normalizedPlotId == null) {
-        setState({
-          loading: false,
-          error: null,
-          completion: null,
-          qubiq: null,
-          allQubiqs: emptyQubiqMap(),
-        });
+        setState(createEmptyState());
         return;
       }
 
       setState((prev) => ({
         ...prev,
         loading: true,
+        loadingPlot: true,
         error: null,
+        completion: null,
+        allQubiqs: emptyQubiqMap(),
       }));
 
       try {
-        const completionPromise = getPlotCompletionState(normalizedPlotId);
-        const allQubiqsPromise = getAllPlotQubiqStates(normalizedPlotId);
-        const qubiqPromise =
-          cell != null
-            ? getQubiq(normalizedPlotId, cell.x, cell.y)
-            : Promise.resolve(null);
-
-        const [completion, allQubiqs, qubiq] = await Promise.all([
-          completionPromise,
-          allQubiqsPromise,
-          qubiqPromise,
+        const [completion, allQubiqs] = await Promise.all([
+          getPlotCompletionState(normalizedPlotId),
+          getAllPlotQubiqStates(normalizedPlotId),
         ]);
 
         if (cancelled) return;
 
-        setState({
-          loading: false,
+        setState((prev) => ({
+          ...prev,
+          loadingPlot: false,
+          loading: prev.loadingCell,
           error: null,
           completion,
-          qubiq,
           allQubiqs,
-        });
+          qubiq:
+            cell != null
+              ? allQubiqs[`${cell.x},${cell.y}`] ?? prev.qubiq
+              : null,
+        }));
       } catch (error) {
         if (cancelled) return;
 
-        setState({
-          loading: false,
+        setState((prev) => ({
+          ...prev,
+          loadingPlot: false,
+          loading: prev.loadingCell,
           error: error instanceof Error ? error.message : "Live plot read failed.",
           completion: null,
-          qubiq: null,
           allQubiqs: emptyQubiqMap(),
-        });
+          qubiq: null,
+        }));
       }
     }
 
-    load();
+    loadPlotState();
 
     return () => {
       cancelled = true;
     };
-  }, [plotId, cell?.x, cell?.y, refreshKey]);
+  }, [normalizedPlotId, refreshKey]);
 
-  return state;
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSelectedCell() {
+      if (normalizedPlotId == null || cell == null) {
+        setState((prev) => ({
+          ...prev,
+          qubiq: null,
+          loadingCell: false,
+          loading: prev.loadingPlot,
+        }));
+        return;
+      }
+
+      setState((prev) => ({
+        ...prev,
+        qubiq: prev.allQubiqs[`${cell.x},${cell.y}`] ?? null,
+        loadingCell: true,
+        loading: true,
+        error: null,
+      }));
+
+      try {
+        const qubiq = await getQubiq(normalizedPlotId, cell.x, cell.y);
+
+        if (cancelled) return;
+
+        setState((prev) => ({
+          ...prev,
+          loadingCell: false,
+          loading: prev.loadingPlot,
+          error: null,
+          qubiq,
+          allQubiqs: {
+            ...prev.allQubiqs,
+            [`${cell.x},${cell.y}`]: qubiq,
+          },
+        }));
+      } catch (error) {
+        if (cancelled) return;
+
+        setState((prev) => ({
+          ...prev,
+          loadingCell: false,
+          loading: prev.loadingPlot,
+          error: error instanceof Error ? error.message : "Live Qubiq read failed.",
+          qubiq: null,
+        }));
+      }
+    }
+
+    loadSelectedCell();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [normalizedPlotId, cell?.x, cell?.y, refreshKey]);
+
+  return {
+    loading: state.loading,
+    error: state.error,
+    completion: state.completion,
+    qubiq: state.qubiq,
+    allQubiqs: state.allQubiqs,
+  };
 }

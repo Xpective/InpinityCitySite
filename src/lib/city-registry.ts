@@ -1,12 +1,11 @@
 import {
-    BrowserProvider,
-    Contract,
-    Signer,
-    type ContractTransactionResponse,
-    type Eip1193Provider,
-  } from "ethers";
-  import { CONFIG } from "./config";
-
+  BrowserProvider,
+  Contract,
+  Signer,
+  type ContractTransactionResponse,
+  type Eip1193Provider,
+} from "ethers";
+import { CONFIG } from "./config";
 
 export type CityFactionUi = "none" | "inpinity" | "inphinity";
 
@@ -62,16 +61,16 @@ function normalizeAddress(address: string): string {
 }
 
 function getProvider(): BrowserProvider {
-    const ethereum = (window as Window & {
-      ethereum?: Eip1193Provider;
-    }).ethereum;
-  
-    if (!ethereum) {
-      throw new Error("No injected wallet found.");
-    }
-  
-    return new BrowserProvider(ethereum);
+  const ethereum = (window as Window & {
+    ethereum?: Eip1193Provider;
+  }).ethereum;
+
+  if (!ethereum) {
+    throw new Error("No injected wallet found.");
   }
+
+  return new BrowserProvider(ethereum);
+}
 
 export function getCityRegistryAddress(): string {
   const address = normalizeAddress(CONFIG.cityRegistryAddress);
@@ -91,6 +90,24 @@ function mapFaction(raw: number): CityFactionUi {
   return "none";
 }
 
+function toSlotState(
+  slotIndex: number,
+  plotIdRaw: bigint,
+  occupied: boolean,
+  registryState: RegistryReadState
+): PersonalPlotSlotState {
+  return {
+    slotIndex,
+    plotId: occupied ? plotIdRaw : null,
+    occupied,
+    isExpectedNextSlot: registryState.personalPlotCount === slotIndex,
+  };
+}
+
+export function getNextPersonalSlotIndex(registryState: RegistryReadState): number {
+  return registryState.personalPlotCount;
+}
+
 export async function readRegistryState(walletAddress: string): Promise<RegistryReadState> {
   const provider = getProvider();
   const contract = getCityRegistryContract(provider);
@@ -100,8 +117,8 @@ export async function readRegistryState(walletAddress: string): Promise<Registry
     await Promise.all([
       contract.hasCityKeyOf(address) as Promise<boolean>,
       contract.cityKeyTokenOf(address) as Promise<bigint>,
-      contract.chosenFactionOf(address) as Promise<number>,
-      contract.personalPlotCountOf(address) as Promise<number>,
+      contract.chosenFactionOf(address) as Promise<bigint>,
+      contract.personalPlotCountOf(address) as Promise<bigint>,
     ]);
 
   return {
@@ -138,13 +155,46 @@ export async function readPersonalPlot(
   ]);
 
   const [plotIdRaw, occupied] = plotTuple;
+  return toSlotState(slotIndex, plotIdRaw, occupied, registryState);
+}
 
-  return {
-    slotIndex,
-    plotId: occupied ? plotIdRaw : null,
-    occupied,
-    isExpectedNextSlot: registryState.personalPlotCount === slotIndex,
-  };
+export async function readPersonalPlots(
+  walletAddress: string
+): Promise<PersonalPlotSlotState[]> {
+  const provider = getProvider();
+  const contract = getCityRegistryContract(provider);
+  const address = normalizeAddress(walletAddress);
+  const registryState = await readRegistryState(address);
+
+  const slotCountToRead = Math.max(registryState.personalPlotCount + 1, 1);
+  const tuples = await Promise.all(
+    Array.from({ length: slotCountToRead }, (_, slotIndex) =>
+      contract.getPersonalPlot(address, slotIndex) as Promise<[bigint, boolean]>
+    )
+  );
+
+  return tuples
+    .map(([plotIdRaw, occupied], slotIndex) =>
+      toSlotState(slotIndex, plotIdRaw, occupied, registryState)
+    )
+    .filter((slot) => slot.occupied || slot.isExpectedNextSlot);
+}
+
+export async function findPersonalPlotSlotByPlotId(
+  walletAddress: string,
+  plotId: bigint | number | string
+): Promise<number | null> {
+  let targetPlotId: bigint;
+
+  try {
+    targetPlotId = BigInt(plotId);
+  } catch {
+    return null;
+  }
+
+  const slots = await readPersonalPlots(walletAddress);
+  const match = slots.find((slot) => slot.occupied && slot.plotId === targetPlotId);
+  return typeof match?.slotIndex === "number" ? match.slotIndex : null;
 }
 
 export async function readReservationReadiness(
@@ -191,6 +241,7 @@ export async function setCityKeyToken(
   const provider = getProvider();
   const signer = await provider.getSigner();
   const contract = getCityRegistryContract(signer);
+
   return contract.setCityKeyToken(tokenId) as Promise<ContractTransactionResponse>;
 }
 
@@ -200,8 +251,8 @@ export async function chooseFaction(
   const provider = getProvider();
   const signer = await provider.getSigner();
   const contract = getCityRegistryContract(signer);
-
   const factionValue = faction === "inpinity" ? 1 : 2;
+
   return contract.chooseFaction(factionValue) as Promise<ContractTransactionResponse>;
 }
 
@@ -211,5 +262,6 @@ export async function reserveNextPersonalPlot(
   const provider = getProvider();
   const signer = await provider.getSigner();
   const contract = getCityRegistryContract(signer);
+
   return contract.reserveNextPersonalPlot(slotIndex) as Promise<ContractTransactionResponse>;
 }

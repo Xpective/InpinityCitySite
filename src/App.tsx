@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import CityStats from "./components/city/CityStats";
 import CityToolbar from "./components/city/CityToolbar";
 import PlotDetails from "./components/city/PlotDetails";
@@ -6,6 +6,7 @@ import InfinityMap from "./components/city/InfinityMap";
 import MintPreparationPanel from "./components/city/MintPreparationPanel";
 import { useLivePlotProgress } from "./hooks/useLivePlotProgress";
 
+import { CONFIG, shortConfigAddress } from "./lib/config";
 import { getFavoritePlotIds, toggleFavoritePlot } from "./lib/favorites";
 import { requestGraphQL } from "./lib/graphql";
 import { CITY_DASHBOARD_QUERY } from "./lib/queries";
@@ -15,6 +16,7 @@ import { getPlotEligibility, type WalletState } from "./lib/eligibility";
 import {
   evaluateResourceEligibility,
   readWalletResourceBalances,
+  type ResourceBalances,
   type ResourceEligibility,
 } from "./lib/resource-check";
 import type { CityConfigSnapshot } from "./lib/city-config";
@@ -23,7 +25,7 @@ import {
   type QubiqFlowResult,
   type QubiqFlowStep,
 } from "./lib/city-qubiq-flow";
-import { readRegistryState } from "./lib/city-registry";
+import { readPersonalPlots, readRegistryState } from "./lib/city-registry";
 import {
   readOwnedCityKeys,
   type CityKeyOption,
@@ -58,6 +60,18 @@ type SelectedQubiqCell = {
 type BuildPlotOption = {
   plotId: string;
   label: string;
+  slotIndex?: number;
+};
+
+type WalletPersonalPlot = {
+  slotIndex: number;
+  plotId: string;
+};
+
+type EthereumProvider = {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+  on?: (event: string, listener: (...args: unknown[]) => void) => void;
+  removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
 };
 
 function normalize(value: string): string {
@@ -68,21 +82,73 @@ function normalizeAddress(value?: string | null): string {
   return (value || "").trim().toLowerCase();
 }
 
+function getInjectedEthereum(): EthereumProvider | null {
+  return (window as Window & {
+    ethereum?: EthereumProvider;
+  }).ethereum ?? null;
+}
+
 function downloadMapPng(): void {
-  const svg = document.querySelector("#city-map-capture svg") as SVGElement | null;
-  if (!svg) return;
+  void (async () => {
+    const svg = document.querySelector("#city-map-capture svg") as SVGSVGElement | null;
+    if (!svg) return;
 
-  const serializer = new XMLSerializer();
-  const source = serializer.serializeToString(svg);
-  const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+    const serializer = new XMLSerializer();
+    const source = serializer.serializeToString(svg);
+    const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
 
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "inpinity-city-map.svg";
-  link.click();
+    try {
+      const image = new Image();
+      const imageLoaded = new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("SVG render failed."));
+      });
 
-  URL.revokeObjectURL(url);
+      image.src = url;
+      await imageLoaded;
+
+      const rect = svg.getBoundingClientRect();
+      const viewBoxWidth = svg.viewBox?.baseVal?.width || 0;
+      const viewBoxHeight = svg.viewBox?.baseVal?.height || 0;
+      const rawWidth = Number(svg.getAttribute("width")) || 0;
+      const rawHeight = Number(svg.getAttribute("height")) || 0;
+      const width = Math.max(1, Math.ceil(rect.width || viewBoxWidth || rawWidth || 1600));
+      const height = Math.max(1, Math.ceil(rect.height || viewBoxHeight || rawHeight || 900));
+      const scale = window.devicePixelRatio > 1 ? 2 : 1;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Canvas export is not available in this browser.");
+      }
+
+      ctx.scale(scale, scale);
+      ctx.drawImage(image, 0, 0, width, height);
+
+      const pngBlob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, "image/png");
+      });
+
+      if (!pngBlob) {
+        throw new Error("PNG export failed.");
+      }
+
+      const pngUrl = URL.createObjectURL(pngBlob);
+      const link = document.createElement("a");
+      link.href = pngUrl;
+      link.download = "inpinity-city-map.png";
+      link.click();
+      URL.revokeObjectURL(pngUrl);
+    } catch (error) {
+      console.warn("Map export failed:", error);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  })();
 }
 
 function matchesSearch(plot: InfinityPlot, term: string): boolean {
@@ -133,11 +199,12 @@ function matchesSpecial(
   }
 }
 
-function buildPlotOptionLabel(plot: InfinityPlot): string {
+function buildPlotOptionLabel(plot: InfinityPlot, slotIndex?: number): string {
+  const slotPart = typeof slotIndex === "number" ? `Slot ${slotIndex} · ` : "";
   const idPart = plot.plotId ? `#${plot.plotId}` : plot.label;
   const factionPart = plot.faction ? ` · ${plot.faction}` : "";
   const statusPart = plot.status ? ` · ${plot.status}` : "";
-  return `${idPart}${factionPart}${statusPart}`;
+  return `${slotPart}${idPart}${factionPart}${statusPart}`;
 }
 
 export default function App() {
@@ -167,8 +234,10 @@ export default function App() {
 
   const [cityConfigSnapshot, setCityConfigSnapshot] =
     useState<CityConfigSnapshot | null>(null);
-  const [resourceEligibility, setResourceEligibility] =
-    useState<ResourceEligibility | null>(null);
+  const [resourceBalances, setResourceBalances] =
+    useState<ResourceBalances | null>(null);
+  const [walletPersonalPlots, setWalletPersonalPlots] =
+    useState<WalletPersonalPlot[]>([]);
 
   const [dashboard, setDashboard] = useState<DashboardQueryResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -236,50 +305,74 @@ export default function App() {
     };
   }, [retryCount]);
 
-  useEffect(() => {
-    async function syncWalletState() {
-      const ethereum = (window as Window & {
-        ethereum?: {
-          request: (args: { method: string }) => Promise<unknown>;
-        };
-      }).ethereum;
+  const syncWalletState = useCallback(async () => {
+    const ethereum = getInjectedEthereum();
+    if (!ethereum) return;
 
-      if (!ethereum) return;
+    try {
+      const accounts = (await ethereum.request({
+        method: "eth_accounts",
+      })) as string[];
 
-      try {
-        const accounts = (await ethereum.request({
-          method: "eth_accounts",
-        })) as string[];
+      const chainIdHex = (await ethereum.request({
+        method: "eth_chainId",
+      })) as string;
 
-        const chainIdHex = (await ethereum.request({
-          method: "eth_chainId",
-        })) as string;
+      const chainId = parseInt(chainIdHex, 16);
 
-        const chainId = parseInt(chainIdHex, 16);
-
-        if (accounts?.length) {
-          setWallet((prev) => ({
-            ...prev,
-            isConnected: true,
-            address: accounts[0],
-            chainId,
-          }));
-        } else {
-          setWallet({
-            isConnected: false,
-            address: null,
-            chainId,
-            chosenFaction: null,
-            hasCityKey: null,
-          });
-        }
-      } catch (walletError) {
-        console.warn("Wallet sync failed:", walletError);
+      if (accounts?.length) {
+        setWallet((prev) => ({
+          ...prev,
+          isConnected: true,
+          address: accounts[0],
+          chainId,
+        }));
+      } else {
+        setWallet({
+          isConnected: false,
+          address: null,
+          chainId,
+          chosenFaction: null,
+          hasCityKey: null,
+        });
       }
+    } catch (walletError) {
+      console.warn("Wallet sync failed:", walletError);
+    }
+  }, []);
+
+  useEffect(() => {
+    const ethereum = getInjectedEthereum();
+    void syncWalletState();
+
+    if (!ethereum?.on || !ethereum.removeListener) {
+      return;
     }
 
-    syncWalletState();
-  }, []);
+    const handleAccountsChanged = () => {
+      setReservedPlotId(null);
+      setActiveBuildPlotId("");
+      setFlowResult(null);
+      setTxHash(null);
+      setTxStep("idle");
+      setSelectedCityKeyTokenId("");
+      void syncWalletState();
+      setRetryCount((prev) => prev + 1);
+    };
+
+    const handleChainChanged = () => {
+      void syncWalletState();
+      setRetryCount((prev) => prev + 1);
+    };
+
+    ethereum.on("accountsChanged", handleAccountsChanged);
+    ethereum.on("chainChanged", handleChainChanged);
+
+    return () => {
+      ethereum.removeListener?.("accountsChanged", handleAccountsChanged);
+      ethereum.removeListener?.("chainChanged", handleChainChanged);
+    };
+  }, [syncWalletState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -359,6 +452,42 @@ export default function App() {
     };
   }, [wallet.isConnected, wallet.address, retryCount]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWalletPersonalPlots() {
+      if (!wallet.isConnected || !wallet.address) {
+        setWalletPersonalPlots([]);
+        return;
+      }
+
+      try {
+        const slots = await readPersonalPlots(wallet.address);
+        if (cancelled) return;
+
+        setWalletPersonalPlots(
+          slots
+            .filter((slot) => slot.occupied && slot.plotId != null)
+            .map((slot) => ({
+              slotIndex: slot.slotIndex,
+              plotId: slot.plotId!.toString(),
+            }))
+        );
+      } catch (err) {
+        console.warn("Personal plot slot read failed:", err);
+        if (!cancelled) {
+          setWalletPersonalPlots([]);
+        }
+      }
+    }
+
+    loadWalletPersonalPlots();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [wallet.isConnected, wallet.address, retryCount]);
+
   const basePlots = useMemo(() => {
     return generateInfinityPlots();
   }, []);
@@ -368,52 +497,52 @@ export default function App() {
   }, [basePlots, dashboard]);
 
   const buildPlotOptions = useMemo<BuildPlotOption[]>(() => {
-    const walletAddress = normalizeAddress(wallet.address);
     const optionsMap = new Map<string, BuildPlotOption>();
 
-    for (const plot of hydratedPlots) {
-      const plotId = (plot.plotId || "").trim();
+    for (const slot of walletPersonalPlots) {
+      const plotId = slot.plotId.trim();
       if (!plotId) continue;
 
-      const isReservedByFlow = reservedPlotId === plotId;
-      const isOwnedByWallet =
-        !!walletAddress &&
-        normalizeAddress(plot.owner) === walletAddress;
-
-      const looksLikeStartedPlot =
-        isReservedByFlow ||
-        isOwnedByWallet ||
-        plot.status === "reserved" ||
-        plot.status === "owned";
-
-      if (!looksLikeStartedPlot) continue;
+      const hydratedPlot =
+        hydratedPlots.find((plot) => String(plot.plotId || "") === plotId) || null;
 
       optionsMap.set(plotId, {
         plotId,
-        label: buildPlotOptionLabel(plot),
+        slotIndex: slot.slotIndex,
+        label: hydratedPlot
+          ? buildPlotOptionLabel(hydratedPlot, slot.slotIndex)
+          : `Slot ${slot.slotIndex} · #${plotId}`,
       });
     }
 
     if (reservedPlotId && !optionsMap.has(reservedPlotId)) {
       optionsMap.set(reservedPlotId, {
         plotId: reservedPlotId,
-        label: `#${reservedPlotId} · active build`,
+        label: `Active build · #${reservedPlotId}`,
       });
     }
 
-    return Array.from(optionsMap.values());
-  }, [hydratedPlots, wallet.address, reservedPlotId]);
+    return Array.from(optionsMap.values()).sort((a, b) => {
+      const slotA = typeof a.slotIndex === "number" ? a.slotIndex : Number.MAX_SAFE_INTEGER;
+      const slotB = typeof b.slotIndex === "number" ? b.slotIndex : Number.MAX_SAFE_INTEGER;
+      if (slotA !== slotB) return slotA - slotB;
+      return a.plotId.localeCompare(b.plotId, undefined, { numeric: true });
+    });
+  }, [walletPersonalPlots, hydratedPlots, reservedPlotId]);
 
   useEffect(() => {
-    if (reservedPlotId) {
-      setActiveBuildPlotId(reservedPlotId);
-      return;
-    }
-
     if (
       activeBuildPlotId &&
       buildPlotOptions.some((item) => item.plotId === activeBuildPlotId)
     ) {
+      return;
+    }
+
+    if (
+      reservedPlotId &&
+      buildPlotOptions.some((item) => item.plotId === reservedPlotId)
+    ) {
+      setActiveBuildPlotId(reservedPlotId);
       return;
     }
 
@@ -447,7 +576,7 @@ export default function App() {
     async function loadResourceState() {
       if (!wallet.isConnected || !wallet.address) {
         setCityConfigSnapshot(null);
-        setResourceEligibility(null);
+        setResourceBalances(null);
         return;
       }
 
@@ -457,19 +586,12 @@ export default function App() {
         if (cancelled) return;
 
         setCityConfigSnapshot(snapshot);
-
-        const evaluated = evaluateResourceEligibility(
-          activeBuildPlot || selectedPlot,
-          balances,
-          snapshot
-        );
-
-        setResourceEligibility(evaluated);
+        setResourceBalances(balances);
       } catch (err) {
         console.warn("Resource check failed:", err);
         if (!cancelled) {
           setCityConfigSnapshot(null);
-          setResourceEligibility(null);
+          setResourceBalances(null);
         }
       }
     }
@@ -479,7 +601,26 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [wallet, activeBuildPlot, selectedPlot, retryCount]);
+  }, [wallet.isConnected, wallet.address, retryCount]);
+
+  const resourceEligibility = useMemo<ResourceEligibility | null>(() => {
+    if (!resourceBalances || !cityConfigSnapshot) {
+      return null;
+    }
+
+    return evaluateResourceEligibility(
+      activeBuildPlot || selectedPlot,
+      resourceBalances,
+      cityConfigSnapshot,
+      livePlotProgress.qubiq
+    );
+  }, [
+    activeBuildPlot,
+    selectedPlot,
+    resourceBalances,
+    cityConfigSnapshot,
+    livePlotProgress.qubiq,
+  ]);
 
   const filteredPlots = useMemo(() => {
     const term = normalize(searchTerm);
@@ -506,6 +647,18 @@ export default function App() {
       setSelectedPlot(refreshed);
     }
   }, [hydratedPlots, selectedPlot]);
+
+  useEffect(() => {
+    if (wallet.isConnected && wallet.address) {
+      return;
+    }
+
+    setReservedPlotId(null);
+    setActiveBuildPlotId("");
+    setFlowResult(null);
+    setTxHash(null);
+    setTxStep("idle");
+  }, [wallet.isConnected, wallet.address]);
 
   function handleToggleFavorite(id: string): void {
     const next = toggleFavoritePlot(id);
@@ -554,11 +707,7 @@ export default function App() {
   };
 
   const handleConnectWallet = async (): Promise<void> => {
-    const ethereum = (window as Window & {
-      ethereum?: {
-        request: (args: { method: string }) => Promise<unknown>;
-      };
-    }).ethereum;
+    const ethereum = getInjectedEthereum();
 
     if (!ethereum) {
       alert("No injected wallet found. Please install MetaMask or another EVM wallet.");
@@ -566,22 +715,11 @@ export default function App() {
     }
 
     try {
-      const accounts = (await ethereum.request({
+      await ethereum.request({
         method: "eth_requestAccounts",
-      })) as string[];
-
-      const chainIdHex = (await ethereum.request({
-        method: "eth_chainId",
-      })) as string;
-
-      const chainId = parseInt(chainIdHex, 16);
-
-      setWallet((prev) => ({
-        ...prev,
-        isConnected: !!accounts?.length,
-        address: accounts?.[0] || null,
-        chainId,
-      }));
+      });
+      await syncWalletState();
+      setRetryCount((prev) => prev + 1);
     } catch (walletError) {
       console.error("Wallet connect failed:", walletError);
     }
@@ -614,9 +752,17 @@ export default function App() {
     setFlowResult(null);
 
     try {
+      const targetBuildPlotId =
+        activeBuildPlotId ||
+        reservedPlotId ||
+        (effectiveSelectedPlot?.plotId &&
+        buildPlotOptions.some((item) => item.plotId === effectiveSelectedPlot.plotId)
+          ? effectiveSelectedPlot.plotId
+          : null);
+
       const result = await runQubiqContributionFlow({
         walletAddress: wallet.address,
-        slotIndex: 0,
+        targetPlotId: targetBuildPlotId,
         cityKeyTokenId: selectedCityKeyTokenId
           ? BigInt(selectedCityKeyTokenId)
           : null,
@@ -629,6 +775,7 @@ export default function App() {
         qubiqX: selectedQubiqCell.x,
         qubiqY: selectedQubiqCell.y,
         resourceEligibility,
+        autoSwitchChain: true,
       });
 
       setFlowResult(result);
@@ -685,23 +832,27 @@ export default function App() {
         <div className="cards">
           <div className="card">
             <div className="muted">Chain ID</div>
-            <strong>8453</strong>
+            <strong>{CONFIG.chainId}</strong>
           </div>
           <div className="card">
             <div className="muted">Subgraph Proxy</div>
-            <strong>https://api.city.inpinity.online/graphql</strong>
+            <strong>{CONFIG.subgraphUrl}</strong>
           </div>
           <div className="card">
             <div className="muted">CityRegistry</div>
-            <strong>live</strong>
+            <strong>{shortConfigAddress(CONFIG.cityRegistryAddress)}</strong>
           </div>
           <div className="card">
             <div className="muted">CityLand</div>
-            <strong>live</strong>
+            <strong>{shortConfigAddress(CONFIG.cityLandAddress)}</strong>
           </div>
           <div className="card">
             <div className="muted">CityConfig</div>
             <strong>{cityConfigSnapshot ? "loaded" : "loading / unavailable"}</strong>
+          </div>
+          <div className="card">
+            <div className="muted">CityValidation</div>
+            <strong>{shortConfigAddress(CONFIG.cityValidationAddress)}</strong>
           </div>
           <div className="card">
             <div className="muted">City Key</div>

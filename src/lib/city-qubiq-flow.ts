@@ -5,14 +5,17 @@ import {
   type ContractTransactionResponse,
   type Eip1193Provider,
 } from "ethers";
-import { CONFIG } from "./config";
+import { BASE_CHAIN_PARAMETERS, CONFIG } from "./config";
 import {
   chooseFaction,
+  findPersonalPlotSlotByPlotId,
+  getNextPersonalSlotIndex,
   readPersonalPlot,
   readRegistryState,
   reserveNextPersonalPlot,
   setCityKeyToken,
   type CityFactionUi,
+  type PersonalPlotSlotState,
   type RegistryReadState,
 } from "./city-registry";
 import {
@@ -20,6 +23,7 @@ import {
   getPlotCompletionState,
   type PlotCompletionState,
 } from "./city-land";
+import { canFillQubiq, canReservePersonalPlot } from "./city-validation";
 import type { ResourceEligibility } from "./resource-check";
 
 export type QubiqFlowStep =
@@ -48,6 +52,8 @@ export type QubiqFlowCode =
   | "reservation_sent"
   | "approval_sent"
   | "contribution_sent"
+  | "validation_failed"
+  | "user_rejected"
   | "unexpected_error";
 
 export type QubiqFlowResult = {
@@ -64,17 +70,19 @@ export type QubiqFlowResult = {
 
 export type RunQubiqFlowArgs = {
   walletAddress: string;
-  slotIndex: number;
+  slotIndex?: number | null;
+  targetPlotId?: bigint | number | string | null;
   cityKeyTokenId?: bigint | number | null;
   desiredFaction?: "inpinity" | "inphinity" | null;
   qubiqX: number;
   qubiqY: number;
   resourceEligibility?: ResourceEligibility | null;
+  autoSwitchChain?: boolean;
 };
 
 export type QubiqFlowReadiness = {
   registry: RegistryReadState;
-  slot: Awaited<ReturnType<typeof readPersonalPlot>>;
+  slot: PersonalPlotSlotState;
   approved: boolean;
   canContribute: boolean;
   nextCode:
@@ -93,6 +101,26 @@ export type QubiqFlowReadiness = {
   nextMessage: string;
 };
 
+type WalletRuntime = {
+  provider: BrowserProvider;
+  signer: Awaited<ReturnType<BrowserProvider["getSigner"]>>;
+  walletAddress: string;
+  chainId: number;
+};
+
+type ResolvedSlotTarget = {
+  registry: RegistryReadState;
+  slotIndex: number;
+  slotState: PersonalPlotSlotState;
+  targetPlotId: bigint | null;
+};
+
+function isFlowFailure(
+  value: ResolvedSlotTarget | QubiqFlowResult
+): value is QubiqFlowResult {
+  return "ok" in value;
+}
+
 const BASE_CHAIN_ID = Number((CONFIG.chainId || 8453).toString().trim());
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -101,20 +129,33 @@ const RESOURCE_TOKEN_ABI = [
   "function setApprovalForAll(address operator, bool approved)",
 ] as const;
 
+const CITY_CONFIG_ABI = [
+  "function KEY_RESOURCE_TOKEN() view returns (bytes32)",
+  "function getAddressConfig(bytes32 key) view returns (address)",
+] as const;
+
 function normalizeAddress(address: string): string {
-  return address.trim();
+  return address.trim().toLowerCase();
 }
 
-function getProvider(): BrowserProvider {
+function getEthereum(): Eip1193Provider & {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+} {
   const ethereum = (window as Window & {
-    ethereum?: Eip1193Provider;
+    ethereum?: Eip1193Provider & {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+    };
   }).ethereum;
 
   if (!ethereum) {
     throw new Error("No injected wallet found.");
   }
 
-  return new BrowserProvider(ethereum);
+  return ethereum;
+}
+
+function getProvider(): BrowserProvider {
+  return new BrowserProvider(getEthereum());
 }
 
 function getCityLandAddress(): string {
@@ -125,7 +166,7 @@ function getCityLandAddress(): string {
   return address;
 }
 
-async function getWalletRuntime() {
+async function getWalletRuntime(): Promise<WalletRuntime> {
   const provider = getProvider();
   const signer = await provider.getSigner();
   const walletAddress = normalizeAddress(await signer.getAddress());
@@ -140,16 +181,66 @@ async function getWalletRuntime() {
   };
 }
 
+function isUserRejectedError(error: unknown): boolean {
+  return !!(
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    Number((error as { code?: unknown }).code) === 4001
+  );
+}
+
+async function switchToConfiguredChain(): Promise<void> {
+  const ethereum = getEthereum();
+
+  try {
+    await ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: CONFIG.chainHex }],
+    });
+    return;
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      Number((error as { code?: unknown }).code) === 4902
+    ) {
+      if (!BASE_CHAIN_PARAMETERS.rpcUrls.length) {
+        throw new Error(
+          `Base is not configured in the wallet and no RPC URL is configured for automatic network add.`
+        );
+      }
+
+      await ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: BASE_CHAIN_PARAMETERS.chainId,
+            chainName: BASE_CHAIN_PARAMETERS.chainName,
+            nativeCurrency: BASE_CHAIN_PARAMETERS.nativeCurrency,
+            rpcUrls: [...BASE_CHAIN_PARAMETERS.rpcUrls],
+            blockExplorerUrls: [...BASE_CHAIN_PARAMETERS.blockExplorerUrls],
+          },
+        ],
+      });
+      return;
+    }
+
+    throw error;
+  }
+}
+
 async function readResourceTokenAddress(): Promise<string> {
+  const configuredAddress = (CONFIG.resourceTokenAddress || "").trim();
+  if (configuredAddress) {
+    return configuredAddress;
+  }
+
   const cityConfigAddress = (CONFIG.cityConfigAddress || "").trim();
   if (!cityConfigAddress) {
     throw new Error("Missing VITE_CITY_CONFIG_ADDRESS.");
   }
-
-  const CITY_CONFIG_ABI = [
-    "function KEY_RESOURCE_TOKEN() view returns (bytes32)",
-    "function getAddressConfig(bytes32 key) view returns (address)",
-  ] as const;
 
   const provider = getProvider();
   const contract = new Contract(cityConfigAddress, CITY_CONFIG_ABI, provider);
@@ -192,7 +283,9 @@ async function waitForReceipt(
   return tx.wait();
 }
 
-function getRequiredResourcesFromEligibility(resourceEligibility?: ResourceEligibility | null) {
+function getRequiredResourcesFromEligibility(
+  resourceEligibility?: ResourceEligibility | null
+) {
   if (!resourceEligibility) {
     throw new Error("Resource requirement check is not loaded yet.");
   }
@@ -224,8 +317,37 @@ function getFactionMismatchMessage(
   return `This wallet is already bound to faction ${chosenFaction} and cannot build on ${desiredFaction}.`;
 }
 
-async function ensureWalletAndChain(expectedWalletAddress: string): Promise<QubiqFlowResult | null> {
-  const runtime = await getWalletRuntime();
+function getInsufficientResourcesMessage(
+  resourceEligibility?: ResourceEligibility | null
+): string {
+  if (!resourceEligibility) {
+    return "Not enough resources for the next Qubiq contribution.";
+  }
+
+  const missingParts = [
+    resourceEligibility.missing.oil > 0n
+      ? `Oil ${resourceEligibility.missing.oil.toString()}`
+      : null,
+    resourceEligibility.missing.lemons > 0n
+      ? `Lemons ${resourceEligibility.missing.lemons.toString()}`
+      : null,
+    resourceEligibility.missing.iron > 0n
+      ? `Iron ${resourceEligibility.missing.iron.toString()}`
+      : null,
+  ].filter(Boolean);
+
+  if (!missingParts.length) {
+    return "Not enough resources for the next Qubiq contribution.";
+  }
+
+  return `Missing resources for the selected Qubiq: ${missingParts.join(", ")}.`;
+}
+
+async function ensureWalletAndChain(
+  expectedWalletAddress: string,
+  autoSwitchChain = false
+): Promise<QubiqFlowResult | null> {
+  let runtime = await getWalletRuntime();
 
   if (!runtime.walletAddress) {
     return {
@@ -236,10 +358,7 @@ async function ensureWalletAndChain(expectedWalletAddress: string): Promise<Qubi
     };
   }
 
-  if (
-    normalizeAddress(runtime.walletAddress).toLowerCase() !==
-    normalizeAddress(expectedWalletAddress).toLowerCase()
-  ) {
+  if (normalizeAddress(runtime.walletAddress) !== normalizeAddress(expectedWalletAddress)) {
     return {
       ok: false,
       code: "needs_wallet",
@@ -249,32 +368,108 @@ async function ensureWalletAndChain(expectedWalletAddress: string): Promise<Qubi
   }
 
   if (runtime.chainId !== BASE_CHAIN_ID) {
-    return {
-      ok: false,
-      code: "wrong_chain",
-      step: "validate",
-      message: `Wallet is connected to chain ${runtime.chainId}, expected Base (${BASE_CHAIN_ID}).`,
-    };
+    if (!autoSwitchChain) {
+      return {
+        ok: false,
+        code: "wrong_chain",
+        step: "validate",
+        message: `Wallet is connected to chain ${runtime.chainId}, expected Base (${BASE_CHAIN_ID}).`,
+      };
+    }
+
+    try {
+      await switchToConfiguredChain();
+      runtime = await getWalletRuntime();
+    } catch (error) {
+      return {
+        ok: false,
+        code: isUserRejectedError(error) ? "user_rejected" : "wrong_chain",
+        step: "validate",
+        message:
+          error instanceof Error
+            ? error.message
+            : `Failed to switch to Base (${BASE_CHAIN_ID}).`,
+      };
+    }
+
+    if (runtime.chainId !== BASE_CHAIN_ID) {
+      return {
+        ok: false,
+        code: "wrong_chain",
+        step: "validate",
+        message: `Wallet is connected to chain ${runtime.chainId}, expected Base (${BASE_CHAIN_ID}).`,
+      };
+    }
   }
 
   return null;
 }
 
+async function resolveSlotTarget(args: {
+  walletAddress: string;
+  slotIndex?: number | null;
+  targetPlotId?: bigint | number | string | null;
+}): Promise<ResolvedSlotTarget | QubiqFlowResult> {
+  const registry = await readRegistryState(args.walletAddress);
+
+  if (args.targetPlotId != null) {
+    const slotIndex = await findPersonalPlotSlotByPlotId(
+      args.walletAddress,
+      args.targetPlotId
+    );
+
+    if (slotIndex == null) {
+      return {
+        ok: false,
+        code: "needs_personal_plot",
+        step: "reserve",
+        message:
+          "The selected build plot is not registered to the connected wallet. Refresh the active build plot list and choose one of your own plots.",
+      };
+    }
+
+    const slotState = await readPersonalPlot(args.walletAddress, slotIndex);
+    return {
+      registry,
+      slotIndex,
+      slotState,
+      targetPlotId: BigInt(args.targetPlotId),
+    };
+  }
+
+  const resolvedSlotIndex =
+    typeof args.slotIndex === "number" && args.slotIndex >= 0
+      ? args.slotIndex
+      : getNextPersonalSlotIndex(registry);
+
+  const slotState = await readPersonalPlot(args.walletAddress, resolvedSlotIndex);
+
+  return {
+    registry,
+    slotIndex: resolvedSlotIndex,
+    slotState,
+    targetPlotId: null,
+  };
+}
+
 export async function inspectQubiqFlowReadiness(args: {
   walletAddress: string;
-  slotIndex: number;
+  slotIndex?: number | null;
+  targetPlotId?: bigint | number | string | null;
   desiredFaction?: "inpinity" | "inphinity" | null;
 }): Promise<QubiqFlowReadiness> {
-  const [registry, slot, approved] = await Promise.all([
-    readRegistryState(args.walletAddress),
-    readPersonalPlot(args.walletAddress, args.slotIndex),
-    isResourceApprovedForCityLand(args.walletAddress),
-  ]);
+  const resolved = await resolveSlotTarget(args);
+  if (isFlowFailure(resolved)) {
+    throw new Error(resolved.message);
+  }
+
+  const { registry, slotState, slotIndex } = resolved;
+  const approved = await isResourceApprovedForCityLand(args.walletAddress);
 
   if (!registry.hasCityKey) {
     return {
       registry,
-      slot,
+      slot: slotState,
       approved,
       canContribute: false,
       nextCode: "needs_city_key",
@@ -286,7 +481,7 @@ export async function inspectQubiqFlowReadiness(args: {
   if (registry.chosenFaction === "none") {
     return {
       registry,
-      slot,
+      slot: slotState,
       approved,
       canContribute: false,
       nextCode: "needs_faction",
@@ -298,7 +493,7 @@ export async function inspectQubiqFlowReadiness(args: {
   if (!matchesChosenFaction(registry.chosenFaction, args.desiredFaction)) {
     return {
       registry,
-      slot,
+      slot: slotState,
       approved,
       canContribute: false,
       nextCode: "faction_mismatch",
@@ -307,22 +502,25 @@ export async function inspectQubiqFlowReadiness(args: {
     };
   }
 
-  if (!slot.occupied || !slot.plotId) {
+  if (!slotState.occupied || !slotState.plotId) {
     return {
       registry,
-      slot,
+      slot: slotState,
       approved,
       canContribute: false,
       nextCode: "reserve_plot",
       nextLabel: "Reserve Plot",
-      nextMessage: "Reserve the next personal plot for this wallet.",
+      nextMessage:
+        slotIndex === registry.personalPlotCount
+          ? "Reserve the next personal plot for this wallet."
+          : "This slot is not occupied yet.",
     };
   }
 
   if (!approved) {
     return {
       registry,
-      slot,
+      slot: slotState,
       approved,
       canContribute: false,
       nextCode: "needs_resource_approval",
@@ -333,7 +531,7 @@ export async function inspectQubiqFlowReadiness(args: {
 
   return {
     registry,
-    slot,
+    slot: slotState,
     approved,
     canContribute: true,
     nextCode: "contribute_qubiq",
@@ -346,17 +544,11 @@ export async function runQubiqContributionFlow(
   args: RunQubiqFlowArgs
 ): Promise<QubiqFlowResult> {
   try {
-    const walletCheck = await ensureWalletAndChain(args.walletAddress);
+    const walletCheck = await ensureWalletAndChain(
+      args.walletAddress,
+      args.autoSwitchChain === true
+    );
     if (walletCheck) return walletCheck;
-
-    if (args.resourceEligibility && !args.resourceEligibility.ready) {
-      return {
-        ok: false,
-        code: "insufficient_resources",
-        step: "validate",
-        message: "Not enough resources for the next Qubiq contribution.",
-      };
-    }
 
     let registry = await readRegistryState(args.walletAddress);
 
@@ -419,7 +611,17 @@ export async function runQubiqContributionFlow(
       };
     }
 
-    let slotState = await readPersonalPlot(args.walletAddress, args.slotIndex);
+    const resolved = await resolveSlotTarget({
+      walletAddress: args.walletAddress,
+      slotIndex: args.slotIndex,
+      targetPlotId: args.targetPlotId,
+    });
+
+    if (isFlowFailure(resolved)) {
+      return resolved;
+    }
+
+    let { slotIndex, slotState } = resolved;
 
     if (!slotState.occupied) {
       if (!slotState.isExpectedNextSlot) {
@@ -427,26 +629,40 @@ export async function runQubiqContributionFlow(
           ok: false,
           code: "plot_not_ready",
           step: "reserve",
-          slotIndex: args.slotIndex,
+          slotIndex,
           faction: registry.chosenFaction,
           message: "This slot is not the next expected personal slot.",
         };
       }
 
-      const reserveTx = await reserveNextPersonalPlot(args.slotIndex);
+      const reserveAllowed = await canReservePersonalPlot(args.walletAddress, slotIndex);
+      if (!reserveAllowed) {
+        return {
+          ok: false,
+          code: "validation_failed",
+          step: "reserve",
+          slotIndex,
+          faction: registry.chosenFaction,
+          message:
+            "CityValidation rejected the personal plot reservation. Check City Key, faction, wallet ownership, or slot readiness.",
+        };
+      }
+
+      const reserveTx = await reserveNextPersonalPlot(slotIndex);
       await waitForReceipt(reserveTx);
 
-      slotState = await readPersonalPlot(args.walletAddress, args.slotIndex);
+      slotState = await readPersonalPlot(args.walletAddress, slotIndex);
 
       return {
         ok: true,
         code: "reservation_sent",
         step: "reserve",
         txHash: reserveTx.hash,
-        slotIndex: args.slotIndex,
+        slotIndex,
         plotId: slotState.plotId,
         faction: registry.chosenFaction,
-        message: "Personal plot reserved successfully. Run the flow again to contribute to the first Qubiq.",
+        message:
+          "Personal plot reserved successfully. Run the flow again to approve resources or contribute to the selected Qubiq.",
       };
     }
 
@@ -455,7 +671,7 @@ export async function runQubiqContributionFlow(
         ok: false,
         code: "needs_personal_plot",
         step: "reserve",
-        slotIndex: args.slotIndex,
+        slotIndex,
         faction: registry.chosenFaction,
         message: "No personal plot found for this slot.",
       };
@@ -472,9 +688,30 @@ export async function runQubiqContributionFlow(
         step: "approve",
         txHash: approvalTx.hash,
         plotId: slotState.plotId,
-        slotIndex: args.slotIndex,
+        slotIndex,
         faction: registry.chosenFaction,
-        message: "Resource approval granted for CityLand. Run the flow again to contribute the Qubiq.",
+        message:
+          "Resource approval granted for CityLand. Run the flow again to contribute the selected Qubiq.",
+      };
+    }
+
+    const canContribute = await canFillQubiq(
+      args.walletAddress,
+      slotState.plotId,
+      args.qubiqX,
+      args.qubiqY
+    );
+
+    if (!canContribute) {
+      return {
+        ok: false,
+        code: "plot_not_ready",
+        step: "contribute",
+        plotId: slotState.plotId,
+        slotIndex,
+        faction: registry.chosenFaction,
+        message:
+          "CityValidation rejected the selected Qubiq cell. The cell may already be complete, invalid, or not owned by the connected wallet.",
       };
     }
 
@@ -488,6 +725,18 @@ export async function runQubiqContributionFlow(
         step: "validate",
         faction: registry.chosenFaction,
         message: error instanceof Error ? error.message : "Missing resource requirements.",
+      };
+    }
+
+    if (args.resourceEligibility && !args.resourceEligibility.ready) {
+      return {
+        ok: false,
+        code: "insufficient_resources",
+        step: "validate",
+        plotId: slotState.plotId,
+        slotIndex,
+        faction: registry.chosenFaction,
+        message: getInsufficientResourcesMessage(args.resourceEligibility),
       };
     }
 
@@ -510,7 +759,7 @@ export async function runQubiqContributionFlow(
       step: "refresh",
       txHash: contributeTx.hash,
       plotId: slotState.plotId,
-      slotIndex: args.slotIndex,
+      slotIndex,
       faction: registry.chosenFaction,
       completion,
       message: "Qubiq contribution successful.",
@@ -521,7 +770,7 @@ export async function runQubiqContributionFlow(
 
     return {
       ok: false,
-      code: "unexpected_error",
+      code: isUserRejectedError(error) ? "user_rejected" : "unexpected_error",
       step: "error",
       message,
     };

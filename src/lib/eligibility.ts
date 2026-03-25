@@ -28,10 +28,7 @@ export type PlotEligibility = {
 
 const BASE_CHAIN_ID = 8453;
 
-function getPlotFactionAllowed(
-  plot: InfinityPlot,
-  wallet: WalletState
-): boolean {
+function getPlotFactionAllowed(plot: InfinityPlot, wallet: WalletState): boolean {
   if (!plot.policy.isPersonal) return false;
 
   const walletFaction = wallet.chosenFaction ?? null;
@@ -43,10 +40,7 @@ function getPlotFactionAllowed(
   return plot.faction === walletFaction;
 }
 
-function getFactionReason(
-  plot: InfinityPlot,
-  wallet: WalletState
-): string | null {
+function getFactionReason(plot: InfinityPlot, wallet: WalletState): string | null {
   const walletFaction = wallet.chosenFaction ?? null;
 
   if (!plot.policy.isPersonal) {
@@ -151,9 +145,7 @@ export function getPlotEligibility(
   }
 
   if (!statusAllowed) {
-    reasons.push(
-      `This plot is not currently buildable. Current status: ${plot.status}.`
-    );
+    reasons.push(`This plot is not currently buildable. Current status: ${plot.status}.`);
   }
 
   if (!sharedZoneBlocked) {
@@ -171,10 +163,12 @@ export function getPlotEligibility(
     reasons.push(factionReason);
   }
 
-  if (!resourceEligibility) {
-    reasons.push("Qubiq cost check not loaded yet.");
-  } else if (!resourcesReady) {
-    reasons.push("Not enough farming resources for the next Qubiq contribution.");
+  if (isStartedPlot) {
+    if (!resourceEligibility) {
+      reasons.push("Qubiq cost check not loaded yet.");
+    } else if (!resourcesReady) {
+      reasons.push("Not enough farming resources for the next Qubiq contribution.");
+    }
   }
 
   reasons.push(
@@ -185,12 +179,7 @@ export function getPlotEligibility(
   );
 
   const reservable =
-    walletConnected &&
-    correctChain &&
-    plotKindAllowed &&
-    isFreePlot &&
-    factionAllowed &&
-    resourcesReady;
+    walletConnected && correctChain && plotKindAllowed && isFreePlot && factionAllowed;
 
   const purchasable = false;
 

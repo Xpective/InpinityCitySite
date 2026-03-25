@@ -172,7 +172,6 @@ function getPrimaryAction(props: {
   plot: InfinityPlot | null;
   wallet: WalletState;
   eligibility: PlotEligibility;
-  resourceEligibility?: ResourceEligibility | null;
   flowBusy: boolean;
   flowResult: QubiqFlowResult | null;
   reservedPlotId?: string | null;
@@ -188,7 +187,6 @@ function getPrimaryAction(props: {
     plot,
     wallet,
     eligibility,
-    resourceEligibility,
     flowBusy,
     flowResult,
     reservedPlotId,
@@ -361,14 +359,6 @@ function getPrimaryAction(props: {
     };
   }
 
-  if (resourceEligibility && !resourceEligibility.ready) {
-    return {
-      label: "Need More Resources",
-      helper: "You need more Oil, Lemons, or Iron for the next Qubiq.",
-      disabled: true,
-      action: "none",
-    };
-  }
 
   if (startedBuild) {
     return {
@@ -539,7 +529,6 @@ export default function MintPreparationPanel({
     plot,
     wallet,
     eligibility,
-    resourceEligibility,
     flowBusy,
     flowResult,
     reservedPlotId,
@@ -851,24 +840,29 @@ export default function MintPreparationPanel({
           <strong>Resource Check</strong>
 
           <div>
-            Oil:{" "}
+            Oil (wallet / needed):{" "}
             {resourceEligibility
               ? `${resourceEligibility.balances.oil.toString()} / ${resourceEligibility.required.oil.toString()}`
               : "—"}
           </div>
 
           <div>
-            Lemons:{" "}
+            Lemons (wallet / needed):{" "}
             {resourceEligibility
               ? `${resourceEligibility.balances.lemons.toString()} / ${resourceEligibility.required.lemons.toString()}`
               : "—"}
           </div>
 
           <div>
-            Iron:{" "}
+            Iron (wallet / needed):{" "}
             {resourceEligibility
               ? `${resourceEligibility.balances.iron.toString()} / ${resourceEligibility.required.iron.toString()}`
               : "—"}
+          </div>
+
+          <div style={{ color: "#cfd6e4" }}>
+            Need values use the live remaining amount for the selected Qubiq cell when
+            available; otherwise they fall back to the default single-cell cost.
           </div>
 
           {resourceEligibility && !resourceEligibility.ready && (

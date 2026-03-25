@@ -16,7 +16,6 @@
     "codegen:force": "graphql-codegen --config codegen.ts --allow-partial-results",
     "codegen:watch": "graphql-codegen --config codegen.ts --watch",
     "prebuild": "npm run codegen",
-    "postinstall": "npm run codegen",
     "test": "vitest",
     "test:run": "vitest run",
     "test:ui": "vitest --ui",
@@ -34,7 +33,8 @@
     "ethers": "^6.16.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-window": "^2.2.7"
+    "react-window": "^2.2.7",
+    "graphql": "^16.12.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

@@ -1,15 +1,12 @@
-import { print } from 'graphql';
-import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
+import { print } from "graphql";
+import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
+import { CONFIG } from "./config";
 
 type GraphQLVariables = Record<string, unknown>;
-type DocumentNode = string | TypedDocumentNode<any, any>;
-
-const DEFAULT_PROXY_URL = "https://api.city.inpinity.online/graphql";
+type DocumentNode = string | TypedDocumentNode;
 
 function getGraphQLEndpoint(): string {
-  const fromEnv = import.meta.env.VITE_SUBGRAPH_URL?.trim();
-  if (fromEnv) return fromEnv;
-  return DEFAULT_PROXY_URL;
+  return CONFIG.subgraphUrl;
 }
 
 export async function requestGraphQL<T>(
@@ -17,8 +14,7 @@ export async function requestGraphQL<T>(
   variables?: GraphQLVariables
 ): Promise<T> {
   const endpoint = getGraphQLEndpoint();
-
-  const queryString = typeof query === 'string' ? query : print(query);
+  const queryString = typeof query === "string" ? query : print(query);
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -38,6 +34,7 @@ export async function requestGraphQL<T>(
   }
 
   let json: { data?: T; errors?: Array<{ message: string }> };
+
   try {
     json = JSON.parse(text);
   } catch {

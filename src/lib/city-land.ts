@@ -7,6 +7,22 @@ import {
 } from "ethers";
 import { CONFIG } from "./config";
 
+type QubiqCosts = {
+  oilRequired: bigint;
+  lemonsRequired: bigint;
+  ironRequired: bigint;
+};
+
+type RawQubiq = {
+  oilDeposited: bigint;
+  lemonsDeposited: bigint;
+  ironDeposited: bigint;
+  completed: boolean;
+  usedAether: boolean;
+  lastContributor: string;
+  completedAt: bigint;
+};
+
 export type QubiqReadState = {
   plotId: bigint;
   x: number;
@@ -58,6 +74,9 @@ const CITY_CONFIG_ABI = [
   "function getUintConfig(bytes32 key) view returns (uint256)",
 ] as const;
 
+let qubiqCostsCache: QubiqCosts | null = null;
+let qubiqCostsPromise: Promise<QubiqCosts> | null = null;
+
 function normalizeAddress(address: string): string {
   return address.trim();
 }
@@ -72,6 +91,11 @@ function getProvider(): BrowserProvider {
   }
 
   return new BrowserProvider(ethereum);
+}
+
+export function clearCityLandCache(): void {
+  qubiqCostsCache = null;
+  qubiqCostsPromise = null;
 }
 
 export function getCityLandAddress(): string {
@@ -98,27 +122,43 @@ export function getCityConfigContract(providerOrSigner: BrowserProvider | Signer
   return new Contract(getCityConfigAddress(), CITY_CONFIG_ABI, providerOrSigner);
 }
 
-async function readQubiqCosts() {
-  const provider = getProvider();
-  const config = getCityConfigContract(provider);
+async function readQubiqCosts(forceRefresh = false): Promise<QubiqCosts> {
+  if (!forceRefresh && qubiqCostsCache) {
+    return qubiqCostsCache;
+  }
 
-  const [oilKey, lemonsKey, ironKey] = await Promise.all([
-    config.KEY_QUBIQ_OIL_COST() as Promise<string>,
-    config.KEY_QUBIQ_LEMONS_COST() as Promise<string>,
-    config.KEY_QUBIQ_IRON_COST() as Promise<string>,
-  ]);
+  if (!forceRefresh && qubiqCostsPromise) {
+    return qubiqCostsPromise;
+  }
 
-  const [oilRequired, lemonsRequired, ironRequired] = await Promise.all([
-    config.getUintConfig(oilKey) as Promise<bigint>,
-    config.getUintConfig(lemonsKey) as Promise<bigint>,
-    config.getUintConfig(ironKey) as Promise<bigint>,
-  ]);
+  qubiqCostsPromise = (async () => {
+    const provider = getProvider();
+    const config = getCityConfigContract(provider);
 
-  return {
-    oilRequired,
-    lemonsRequired,
-    ironRequired,
-  };
+    const [oilKey, lemonsKey, ironKey] = await Promise.all([
+      config.KEY_QUBIQ_OIL_COST() as Promise<string>,
+      config.KEY_QUBIQ_LEMONS_COST() as Promise<string>,
+      config.KEY_QUBIQ_IRON_COST() as Promise<string>,
+    ]);
+
+    const [oilRequired, lemonsRequired, ironRequired] = await Promise.all([
+      config.getUintConfig(oilKey) as Promise<bigint>,
+      config.getUintConfig(lemonsKey) as Promise<bigint>,
+      config.getUintConfig(ironKey) as Promise<bigint>,
+    ]);
+
+    const costs = {
+      oilRequired,
+      lemonsRequired,
+      ironRequired,
+    } satisfies QubiqCosts;
+
+    qubiqCostsCache = costs;
+    qubiqCostsPromise = null;
+    return costs;
+  })();
+
+  return qubiqCostsPromise;
 }
 
 function clampBigintMinZero(value: bigint): bigint {
@@ -144,10 +184,7 @@ function computeCompletionPercent(
   const ironPct =
     ironRequired > 0n ? Number((ironDeposited * 10000n) / ironRequired) / 100 : 100;
 
-  return Math.max(
-    0,
-    Math.min(100, Math.round(Math.min(oilPct, lemonsPct, ironPct)))
-  );
+  return Math.max(0, Math.min(100, Math.round(Math.min(oilPct, lemonsPct, ironPct))));
 }
 
 function getVisualState(
@@ -161,34 +198,27 @@ function getVisualState(
   return "empty";
 }
 
-export async function getQubiq(
+async function readRawQubiq(
+  contract: Contract,
   plotId: bigint | number,
   x: number,
   y: number
-): Promise<QubiqReadState> {
-  const provider = getProvider();
-  const contract = getCityLandContract(provider);
+): Promise<RawQubiq> {
+  return (await contract.getQubiq(plotId, x, y)) as RawQubiq;
+}
 
-  const [rawQubiq, costs] = await Promise.all([
-    contract.getQubiq(plotId, x, y) as Promise<{
-      oilDeposited: bigint;
-      lemonsDeposited: bigint;
-      ironDeposited: bigint;
-      completed: boolean;
-      usedAether: boolean;
-      lastContributor: string;
-      completedAt: bigint;
-    }>,
-    readQubiqCosts(),
-  ]);
-
+function toQubiqReadState(
+  plotId: bigint | number,
+  x: number,
+  y: number,
+  rawQubiq: RawQubiq,
+  costs: QubiqCosts
+): QubiqReadState {
   const oilRemaining = clampBigintMinZero(costs.oilRequired - rawQubiq.oilDeposited);
   const lemonsRemaining = clampBigintMinZero(
     costs.lemonsRequired - rawQubiq.lemonsDeposited
   );
-  const ironRemaining = clampBigintMinZero(
-    costs.ironRequired - rawQubiq.ironDeposited
-  );
+  const ironRemaining = clampBigintMinZero(costs.ironRequired - rawQubiq.ironDeposited);
 
   const completionPercent = computeCompletionPercent(
     rawQubiq.oilDeposited,
@@ -237,17 +267,37 @@ export async function getQubiq(
   };
 }
 
+export async function getQubiq(
+  plotId: bigint | number,
+  x: number,
+  y: number
+): Promise<QubiqReadState> {
+  const provider = getProvider();
+  const contract = getCityLandContract(provider);
+
+  const [rawQubiq, costs] = await Promise.all([
+    readRawQubiq(contract, plotId, x, y),
+    readQubiqCosts(),
+  ]);
+
+  return toQubiqReadState(plotId, x, y, rawQubiq, costs);
+}
+
 export async function getAllPlotQubiqStates(
   plotId: bigint | number
 ): Promise<PlotQubiqMap> {
+  const provider = getProvider();
+  const contract = getCityLandContract(provider);
+  const costs = await readQubiqCosts();
+
   const entries = await Promise.all(
     Array.from({ length: 25 }).map(async (_, index) => {
       const x = index % 5;
       const y = Math.floor(index / 5);
 
       try {
-        const qubiq = await getQubiq(plotId, x, y);
-        return [`${x},${y}`, qubiq] as const;
+        const rawQubiq = await readRawQubiq(contract, plotId, x, y);
+        return [`${x},${y}`, toQubiqReadState(plotId, x, y, rawQubiq, costs)] as const;
       } catch {
         return [`${x},${y}`, null] as const;
       }
@@ -337,9 +387,5 @@ export async function useAetherOnQubiq(args: {
   const signer = await provider.getSigner();
   const contract = getCityLandContract(signer);
 
-  return contract.useAetherOnQubiq(
-    args.plotId,
-    args.x,
-    args.y
-  ) as Promise<ContractTransactionResponse>;
+  return contract.useAetherOnQubiq(args.plotId, args.x, args.y) as Promise<ContractTransactionResponse>;
 }

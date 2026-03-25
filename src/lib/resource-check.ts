@@ -1,15 +1,14 @@
 import { BrowserProvider, Contract } from "ethers";
 import { readCityConfigSnapshot, type CityConfigSnapshot } from "./city-config";
+import type { QubiqReadState } from "./city-land";
 import type { InfinityPlot } from "../types/infinity";
 
-export const RESOURCE_IDS = {
-  OIL: 0,
-  LEMONS: 1,
-  IRON: 2,
-} as const;
-
-const ERC1155_ABI = [
+const RESOURCE_TOKEN_ABI = [
+  "function OIL() view returns (uint256)",
+  "function LEMONS() view returns (uint256)",
+  "function IRON() view returns (uint256)",
   "function balanceOf(address account, uint256 id) view returns (uint256)",
+  "function balanceOfBatch(address[] accounts, uint256[] ids) view returns (uint256[])",
 ] as const;
 
 export type ResourceBalances = {
@@ -45,19 +44,48 @@ async function getProvider() {
   if (!ethereum) {
     throw new Error("No injected wallet found.");
   }
-  return new BrowserProvider(ethereum as any);
+  return new BrowserProvider(ethereum as never);
 }
 
-export function getRequiredResourcesForPlot(
+function emptyRequirement(): ResourceRequirement {
+  return {
+    oil: 0n,
+    lemons: 0n,
+    iron: 0n,
+  };
+}
+
+function getSelectedQubiqRequirement(
   plot: InfinityPlot | null,
-  snapshot: CityConfigSnapshot | null
+  selectedQubiq?: QubiqReadState | null
+): ResourceRequirement | null {
+  if (!plot || !selectedQubiq || !plot.plotId) {
+    return null;
+  }
+
+  if (selectedQubiq.plotId.toString() !== plot.plotId) {
+    return null;
+  }
+
+  return {
+    oil: selectedQubiq.oilRemaining,
+    lemons: selectedQubiq.lemonsRemaining,
+    iron: selectedQubiq.ironRemaining,
+  };
+}
+
+export function getRequiredResourcesForContribution(
+  plot: InfinityPlot | null,
+  snapshot: CityConfigSnapshot | null,
+  selectedQubiq?: QubiqReadState | null
 ): ResourceRequirement {
   if (!plot || !snapshot || !plot.policy.isPersonal) {
-    return {
-      oil: 0n,
-      lemons: 0n,
-      iron: 0n,
-    };
+    return emptyRequirement();
+  }
+
+  const selectedCellRequirement = getSelectedQubiqRequirement(plot, selectedQubiq);
+  if (selectedCellRequirement) {
+    return selectedCellRequirement;
   }
 
   return {
@@ -78,15 +106,32 @@ export async function readWalletResourceBalances(
 
   const resourceToken = new Contract(
     snapshot.resourceTokenAddress,
-    ERC1155_ABI,
+    RESOURCE_TOKEN_ABI,
     provider
   );
 
-  const [oil, lemons, iron] = await Promise.all([
-    resourceToken.balanceOf(walletAddress, RESOURCE_IDS.OIL),
-    resourceToken.balanceOf(walletAddress, RESOURCE_IDS.LEMONS),
-    resourceToken.balanceOf(walletAddress, RESOURCE_IDS.IRON),
+  const [oilId, lemonsId, ironId] = await Promise.all([
+    resourceToken.OIL() as Promise<bigint>,
+    resourceToken.LEMONS() as Promise<bigint>,
+    resourceToken.IRON() as Promise<bigint>,
   ]);
+
+  let balancesRaw: bigint[];
+
+  try {
+    balancesRaw = (await resourceToken.balanceOfBatch(
+      [walletAddress, walletAddress, walletAddress],
+      [oilId, lemonsId, ironId]
+    )) as bigint[];
+  } catch {
+    balancesRaw = await Promise.all([
+      resourceToken.balanceOf(walletAddress, oilId) as Promise<bigint>,
+      resourceToken.balanceOf(walletAddress, lemonsId) as Promise<bigint>,
+      resourceToken.balanceOf(walletAddress, ironId) as Promise<bigint>,
+    ]);
+  }
+
+  const [oil, lemons, iron] = balancesRaw;
 
   return {
     snapshot,
@@ -98,12 +143,16 @@ export async function readWalletResourceBalances(
   };
 }
 
+
+export const getRequiredResourcesForPlot = getRequiredResourcesForContribution;
+
 export function evaluateResourceEligibility(
   plot: InfinityPlot | null,
   balances: ResourceBalances,
-  snapshot: CityConfigSnapshot | null
+  snapshot: CityConfigSnapshot | null,
+  selectedQubiq?: QubiqReadState | null
 ): ResourceEligibility {
-  const required = getRequiredResourcesForPlot(plot, snapshot);
+  const required = getRequiredResourcesForContribution(plot, snapshot, selectedQubiq);
 
   const enoughOil = balances.oil >= required.oil;
   const enoughLemons = balances.lemons >= required.lemons;
@@ -118,7 +167,8 @@ export function evaluateResourceEligibility(
     required,
     missing: {
       oil: required.oil > balances.oil ? required.oil - balances.oil : 0n,
-      lemons: required.lemons > balances.lemons ? required.lemons - balances.lemons : 0n,
+      lemons:
+        required.lemons > balances.lemons ? required.lemons - balances.lemons : 0n,
       iron: required.iron > balances.iron ? required.iron - balances.iron : 0n,
     },
   };

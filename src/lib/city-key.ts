@@ -42,17 +42,17 @@ export async function readOwnedCityKeys(walletAddress: string): Promise<CityKeyO
   const balance = await contract.balanceOf(walletAddress);
   const count = Number(balance);
 
-  const items: CityKeyOption[] = [];
+  const tokenIds = await Promise.all(
+    Array.from({ length: count }, (_, index) =>
+      contract.tokenOfOwnerByIndex(walletAddress, index) as Promise<bigint>
+    )
+  );
 
-  for (let i = 0; i < count; i += 1) {
-    const tokenId = await contract.tokenOfOwnerByIndex(walletAddress, i);
+  return tokenIds.map((tokenId) => {
     const tokenIdString = tokenId.toString();
-
-    items.push({
+    return {
       tokenId: tokenIdString,
       label: `City Key #${tokenIdString}`,
-    });
-  }
-
-  return items;
+    };
+  });
 }
