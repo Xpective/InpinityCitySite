@@ -3,7 +3,7 @@ import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { CONFIG } from "./config";
 
 type GraphQLVariables = Record<string, unknown>;
-type DocumentNode = string | TypedDocumentNode;
+type DocumentNode = string | TypedDocumentNode<any, any>;
 
 function getGraphQLEndpoint(): string {
   return CONFIG.subgraphUrl;

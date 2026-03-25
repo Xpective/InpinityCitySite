@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { InfinityPlot } from "../src/types/infinity";
+import type { InfinityPlot } from "../../types/infinity";
 
 type AvailabilityFilter = "all" | "free" | "reserved" | "owned" | "locked";
 type SpecialFilter =
