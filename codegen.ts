@@ -1,22 +1,13 @@
-import { existsSync } from "node:fs";
 import type { CodegenConfig } from "@graphql-codegen/cli";
 
-const LOCAL_SCHEMA_CANDIDATES = [
-  "./root-schema.json",
-  "./src/types/generated/schema.graphql",
-];
-
-const localSchema = LOCAL_SCHEMA_CANDIDATES.find((candidate) => existsSync(candidate));
-const remoteSchema =
-  process.env.CODEGEN_SCHEMA_URL?.trim() ||
-  process.env.VITE_SUBGRAPH_URL?.trim() ||
-  "https://api.city.inpinity.online/graphql";
-
-const schema = localSchema || remoteSchema;
+const useRemoteSchema = process.env.CODEGEN_USE_REMOTE === "1";
 
 const config: CodegenConfig = {
-  schema,
-  documents: ["src/lib/queries.ts"],
+  schema: useRemoteSchema
+    ? "https://api.city.inpinity.online/graphql"
+    : "./root-schema.json",
+  documents: ["src/**/*.{ts,tsx}", "!src/types/generated/**"],
+  overwrite: true,
   generates: {
     "./src/types/generated/": {
       preset: "client",
@@ -25,7 +16,6 @@ const config: CodegenConfig = {
       },
       config: {
         strictScalars: true,
-        useTypeImports: true,
         scalars: {
           BigInt: "string",
           Bytes: "string",
@@ -45,7 +35,6 @@ const config: CodegenConfig = {
   hooks: {
     afterAllFileWrite: ["prettier --write"],
   },
-  overwrite: true,
   ignoreNoDocuments: true,
 };
 

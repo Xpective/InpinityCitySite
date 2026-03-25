@@ -1,7 +1,14 @@
 import { BrowserProvider, Contract } from "ethers";
+
 import { readCityConfigSnapshot, type CityConfigSnapshot } from "./city-config";
 import type { QubiqReadState } from "./city-land";
 import type { InfinityPlot } from "../types/infinity";
+
+export const RESOURCE_IDS = {
+  OIL: 0,
+  LEMONS: 1,
+  IRON: 2,
+} as const;
 
 const RESOURCE_TOKEN_ABI = [
   "function OIL() view returns (uint256)",
@@ -31,20 +38,21 @@ export type ResourceEligibility = {
   balances: ResourceBalances;
   required: ResourceRequirement;
   missing: ResourceRequirement;
+  source: "static" | "live";
 };
 
 function getEthereum() {
-  return (window as Window & {
-    ethereum?: unknown;
-  }).ethereum;
+  return (window as Window & { ethereum?: unknown }).ethereum;
 }
 
 async function getProvider() {
   const ethereum = getEthereum();
+
   if (!ethereum) {
     throw new Error("No injected wallet found.");
   }
-  return new BrowserProvider(ethereum as never);
+
+  return new BrowserProvider(ethereum as any);
 }
 
 function emptyRequirement(): ResourceRequirement {
@@ -55,37 +63,29 @@ function emptyRequirement(): ResourceRequirement {
   };
 }
 
-function getSelectedQubiqRequirement(
-  plot: InfinityPlot | null,
-  selectedQubiq?: QubiqReadState | null
-): ResourceRequirement | null {
-  if (!plot || !selectedQubiq || !plot.plotId) {
-    return null;
-  }
-
-  if (selectedQubiq.plotId.toString() !== plot.plotId) {
-    return null;
-  }
-
-  return {
-    oil: selectedQubiq.oilRemaining,
-    lemons: selectedQubiq.lemonsRemaining,
-    iron: selectedQubiq.ironRemaining,
-  };
-}
-
-export function getRequiredResourcesForContribution(
-  plot: InfinityPlot | null,
-  snapshot: CityConfigSnapshot | null,
-  selectedQubiq?: QubiqReadState | null
+function mapRemainingRequirement(
+  liveQubiq: Pick<
+    QubiqReadState,
+    "completed" | "usedAether" | "oilRemaining" | "lemonsRemaining" | "ironRemaining"
+  >
 ): ResourceRequirement {
-  if (!plot || !snapshot || !plot.policy.isPersonal) {
+  if (liveQubiq.completed || liveQubiq.usedAether) {
     return emptyRequirement();
   }
 
-  const selectedCellRequirement = getSelectedQubiqRequirement(plot, selectedQubiq);
-  if (selectedCellRequirement) {
-    return selectedCellRequirement;
+  return {
+    oil: liveQubiq.oilRemaining,
+    lemons: liveQubiq.lemonsRemaining,
+    iron: liveQubiq.ironRemaining,
+  };
+}
+
+export function getRequiredResourcesForPlot(
+  plot: InfinityPlot | null,
+  snapshot: CityConfigSnapshot | null
+): ResourceRequirement {
+  if (!plot || !snapshot || !plot.policy.isPersonal) {
+    return emptyRequirement();
   }
 
   return {
@@ -95,26 +95,59 @@ export function getRequiredResourcesForContribution(
   };
 }
 
-export async function readWalletResourceBalances(
-  walletAddress: string
-): Promise<{
+export function getRequiredResourcesForContribution(
+  plot: InfinityPlot | null,
+  snapshot: CityConfigSnapshot | null,
+  liveQubiq?: Pick<
+    QubiqReadState,
+    "completed" | "usedAether" | "oilRemaining" | "lemonsRemaining" | "ironRemaining"
+  > | null
+): { required: ResourceRequirement; source: "static" | "live" } {
+  if (!plot || !snapshot || !plot.policy.isPersonal) {
+    return {
+      required: emptyRequirement(),
+      source: "static",
+    };
+  }
+
+  if (liveQubiq) {
+    return {
+      required: mapRemainingRequirement(liveQubiq),
+      source: "live",
+    };
+  }
+
+  return {
+    required: getRequiredResourcesForPlot(plot, snapshot),
+    source: "static",
+  };
+}
+
+export async function readWalletResourceBalances(walletAddress: string): Promise<{
   snapshot: CityConfigSnapshot;
   balances: ResourceBalances;
 }> {
   const snapshot = await readCityConfigSnapshot();
   const provider = await getProvider();
-
   const resourceToken = new Contract(
     snapshot.resourceTokenAddress,
     RESOURCE_TOKEN_ABI,
     provider
   );
 
-  const [oilId, lemonsId, ironId] = await Promise.all([
-    resourceToken.OIL() as Promise<bigint>,
-    resourceToken.LEMONS() as Promise<bigint>,
-    resourceToken.IRON() as Promise<bigint>,
-  ]);
+  let oilId = BigInt(RESOURCE_IDS.OIL);
+  let lemonsId = BigInt(RESOURCE_IDS.LEMONS);
+  let ironId = BigInt(RESOURCE_IDS.IRON);
+
+  try {
+    [oilId, lemonsId, ironId] = await Promise.all([
+      resourceToken.OIL() as Promise<bigint>,
+      resourceToken.LEMONS() as Promise<bigint>,
+      resourceToken.IRON() as Promise<bigint>,
+    ]);
+  } catch {
+    // Keep the known fallback ids if the token does not expose named getters.
+  }
 
   let balancesRaw: bigint[];
 
@@ -124,11 +157,11 @@ export async function readWalletResourceBalances(
       [oilId, lemonsId, ironId]
     )) as bigint[];
   } catch {
-    balancesRaw = await Promise.all([
+    balancesRaw = (await Promise.all([
       resourceToken.balanceOf(walletAddress, oilId) as Promise<bigint>,
       resourceToken.balanceOf(walletAddress, lemonsId) as Promise<bigint>,
       resourceToken.balanceOf(walletAddress, ironId) as Promise<bigint>,
-    ]);
+    ])) as bigint[];
   }
 
   const [oil, lemons, iron] = balancesRaw;
@@ -143,16 +176,20 @@ export async function readWalletResourceBalances(
   };
 }
 
-
-export const getRequiredResourcesForPlot = getRequiredResourcesForContribution;
-
 export function evaluateResourceEligibility(
   plot: InfinityPlot | null,
   balances: ResourceBalances,
   snapshot: CityConfigSnapshot | null,
-  selectedQubiq?: QubiqReadState | null
+  liveQubiq?: Pick<
+    QubiqReadState,
+    "completed" | "usedAether" | "oilRemaining" | "lemonsRemaining" | "ironRemaining"
+  > | null
 ): ResourceEligibility {
-  const required = getRequiredResourcesForContribution(plot, snapshot, selectedQubiq);
+  const { required, source } = getRequiredResourcesForContribution(
+    plot,
+    snapshot,
+    liveQubiq
+  );
 
   const enoughOil = balances.oil >= required.oil;
   const enoughLemons = balances.lemons >= required.lemons;
@@ -167,9 +204,9 @@ export function evaluateResourceEligibility(
     required,
     missing: {
       oil: required.oil > balances.oil ? required.oil - balances.oil : 0n,
-      lemons:
-        required.lemons > balances.lemons ? required.lemons - balances.lemons : 0n,
+      lemons: required.lemons > balances.lemons ? required.lemons - balances.lemons : 0n,
       iron: required.iron > balances.iron ? required.iron - balances.iron : 0n,
     },
+    source,
   };
 }

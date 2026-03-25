@@ -6,14 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:force": "npm run generate:types && npm run codegen:force && tsc -b --skipLibCheck && vite build",
+    "build:force": "npm run generate:types && npm run codegen:remote && tsc -b --skipLibCheck && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "validate": "tsx scripts/validate-types.ts",
     "generate:types": "tsx scripts/generate-queries.ts",
     "check:all": "npm run validate && npm run generate:types && npm run build",
     "codegen": "graphql-codegen --config codegen.ts",
-    "codegen:force": "graphql-codegen --config codegen.ts --allow-partial-results",
+    "codegen:remote": "CODEGEN_USE_REMOTE=1 graphql-codegen --config codegen.ts",
     "codegen:watch": "graphql-codegen --config codegen.ts --watch",
     "prebuild": "npm run codegen",
     "test": "vitest",
@@ -31,10 +31,10 @@
     "@mui/material": "^7.3.9",
     "@types/react-window": "^1.8.8",
     "ethers": "^6.16.0",
+    "graphql": "^16.11.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-window": "^2.2.7",
-    "graphql": "^16.12.0"
+    "react-window": "^2.2.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

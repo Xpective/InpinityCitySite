@@ -3,9 +3,10 @@ import {
   Contract,
   Signer,
   type ContractTransactionResponse,
-  type Eip1193Provider,
 } from "ethers";
+
 import { CONFIG } from "./config";
+import { getInjectedEthereum, normalizeAddress } from "./evm-wallet";
 
 export type CityFactionUi = "none" | "inpinity" | "inphinity";
 
@@ -23,6 +24,10 @@ export type PersonalPlotSlotState = {
   plotId: bigint | null;
   occupied: boolean;
   isExpectedNextSlot: boolean;
+};
+
+export type ResolvedPersonalPlotSlot = PersonalPlotSlotState & {
+  resolution: "preferred" | "target" | "next";
 };
 
 export type ReservationReadiness = {
@@ -56,14 +61,8 @@ export type PlotCoreStruct = {
   exists: boolean;
 };
 
-function normalizeAddress(address: string): string {
-  return address.trim();
-}
-
 function getProvider(): BrowserProvider {
-  const ethereum = (window as Window & {
-    ethereum?: Eip1193Provider;
-  }).ethereum;
+  const ethereum = getInjectedEthereum();
 
   if (!ethereum) {
     throw new Error("No injected wallet found.");
@@ -77,6 +76,7 @@ export function getCityRegistryAddress(): string {
   if (!address) {
     throw new Error("Missing VITE_CITY_REGISTRY_ADDRESS.");
   }
+
   return address;
 }
 
@@ -88,24 +88,6 @@ function mapFaction(raw: number): CityFactionUi {
   if (raw === 1) return "inpinity";
   if (raw === 2) return "inphinity";
   return "none";
-}
-
-function toSlotState(
-  slotIndex: number,
-  plotIdRaw: bigint,
-  occupied: boolean,
-  registryState: RegistryReadState
-): PersonalPlotSlotState {
-  return {
-    slotIndex,
-    plotId: occupied ? plotIdRaw : null,
-    occupied,
-    isExpectedNextSlot: registryState.personalPlotCount === slotIndex,
-  };
-}
-
-export function getNextPersonalSlotIndex(registryState: RegistryReadState): number {
-  return registryState.personalPlotCount;
 }
 
 export async function readRegistryState(walletAddress: string): Promise<RegistryReadState> {
@@ -155,46 +137,71 @@ export async function readPersonalPlot(
   ]);
 
   const [plotIdRaw, occupied] = plotTuple;
-  return toSlotState(slotIndex, plotIdRaw, occupied, registryState);
+
+  return {
+    slotIndex,
+    plotId: occupied ? plotIdRaw : null,
+    occupied,
+    isExpectedNextSlot: registryState.personalPlotCount === slotIndex,
+  };
 }
 
-export async function readPersonalPlots(
+export async function readAllPersonalPlotSlots(
   walletAddress: string
 ): Promise<PersonalPlotSlotState[]> {
-  const provider = getProvider();
-  const contract = getCityRegistryContract(provider);
-  const address = normalizeAddress(walletAddress);
-  const registryState = await readRegistryState(address);
+  const registryState = await readRegistryState(walletAddress);
+  const slotCountToRead = Math.max(1, registryState.personalPlotCount + 1);
 
-  const slotCountToRead = Math.max(registryState.personalPlotCount + 1, 1);
-  const tuples = await Promise.all(
-    Array.from({ length: slotCountToRead }, (_, slotIndex) =>
-      contract.getPersonalPlot(address, slotIndex) as Promise<[bigint, boolean]>
+  return Promise.all(
+    Array.from({ length: slotCountToRead }).map((_, slotIndex) =>
+      readPersonalPlot(walletAddress, slotIndex)
     )
   );
-
-  return tuples
-    .map(([plotIdRaw, occupied], slotIndex) =>
-      toSlotState(slotIndex, plotIdRaw, occupied, registryState)
-    )
-    .filter((slot) => slot.occupied || slot.isExpectedNextSlot);
 }
 
-export async function findPersonalPlotSlotByPlotId(
+export async function resolvePersonalPlotSlot(
   walletAddress: string,
-  plotId: bigint | number | string
-): Promise<number | null> {
-  let targetPlotId: bigint;
+  options?: {
+    targetPlotId?: bigint | number | null;
+    preferredSlotIndex?: number | null;
+  }
+): Promise<ResolvedPersonalPlotSlot> {
+  const address = normalizeAddress(walletAddress);
+  const targetPlotId =
+    options?.targetPlotId != null ? BigInt(options.targetPlotId) : null;
 
-  try {
-    targetPlotId = BigInt(plotId);
-  } catch {
-    return null;
+  if (typeof options?.preferredSlotIndex === "number" && options.preferredSlotIndex >= 0) {
+    const preferred = await readPersonalPlot(address, options.preferredSlotIndex);
+
+    if (!targetPlotId || preferred.plotId === targetPlotId) {
+      return {
+        ...preferred,
+        resolution: "preferred",
+      };
+    }
   }
 
-  const slots = await readPersonalPlots(walletAddress);
-  const match = slots.find((slot) => slot.occupied && slot.plotId === targetPlotId);
-  return typeof match?.slotIndex === "number" ? match.slotIndex : null;
+  const slots = await readAllPersonalPlotSlots(address);
+
+  if (targetPlotId != null) {
+    const matched = slots.find(
+      (slot) => slot.occupied && slot.plotId != null && slot.plotId === targetPlotId
+    );
+
+    if (matched) {
+      return {
+        ...matched,
+        resolution: "target",
+      };
+    }
+  }
+
+  const nextSlot = slots.find((slot) => slot.isExpectedNextSlot) || slots[slots.length - 1];
+
+  return {
+    ...nextSlot,
+    resolution: "next",
+  };
 }
 
 export async function readReservationReadiness(
