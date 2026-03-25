@@ -1,13 +1,21 @@
+import { existsSync } from "node:fs";
 import type { CodegenConfig } from "@graphql-codegen/cli";
 
-const useRemoteSchema = process.env.CODEGEN_USE_REMOTE === "1";
+const remoteSchema =
+  process.env.CODEGEN_SCHEMA_URL?.trim() ||
+  process.env.VITE_SUBGRAPH_URL?.trim() ||
+  "https://api.city.inpinity.online/graphql";
+
+// Wichtig:
+// root-schema.json in diesem Repo ist nur ein Debug-Dump und KEIN vollständiges
+// Introspection-Schema. Deshalb hier bewusst nicht verwenden.
+const schema = existsSync("./src/types/generated/schema.graphql")
+  ? "./src/types/generated/schema.graphql"
+  : remoteSchema;
 
 const config: CodegenConfig = {
-  schema: useRemoteSchema
-    ? "https://api.city.inpinity.online/graphql"
-    : "./root-schema.json",
-  documents: ["src/**/*.{ts,tsx}", "!src/types/generated/**"],
-  overwrite: true,
+  schema,
+  documents: ["src/lib/queries.ts"],
   generates: {
     "./src/types/generated/": {
       preset: "client",
@@ -16,6 +24,7 @@ const config: CodegenConfig = {
       },
       config: {
         strictScalars: true,
+        useTypeImports: true,
         scalars: {
           BigInt: "string",
           Bytes: "string",
@@ -30,11 +39,15 @@ const config: CodegenConfig = {
     },
     "./src/types/generated/schema.graphql": {
       plugins: ["schema-ast"],
+      config: {
+        includeDirectives: true,
+      },
     },
   },
   hooks: {
     afterAllFileWrite: ["prettier --write"],
   },
+  overwrite: true,
   ignoreNoDocuments: true,
 };
 

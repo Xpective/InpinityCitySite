@@ -1,3 +1,7 @@
+schema {
+  query: Query
+}
+
 """
 creates a virtual field on the entity that may be queried but cannot be set manually through the mappings API.
 """
@@ -241,7 +245,6 @@ enum Aggregation_current {
   Exclude the current, partially filled bucket from the response
   """
   exclude
-
   """
   Include the current, partially filled bucket in the response
   """
@@ -9115,7 +9118,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9127,7 +9129,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9142,7 +9143,6 @@ type Query {
     orderBy: AetherUseRecordedEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9158,7 +9158,6 @@ type Query {
     orderBy: AetherUse_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9171,7 +9170,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9186,7 +9184,6 @@ type Query {
     orderBy: ApprovalEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9199,7 +9196,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9214,7 +9210,6 @@ type Query {
     orderBy: ApprovalForAllEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9227,7 +9222,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9242,7 +9236,6 @@ type Query {
     orderBy: AuthorizedCaller_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9255,7 +9248,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9270,7 +9262,6 @@ type Query {
     orderBy: AuthorizedMinter_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9283,7 +9274,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9298,7 +9288,6 @@ type Query {
     orderBy: BaseURI_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9311,7 +9300,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9326,7 +9314,6 @@ type Query {
     orderBy: BlueprintApprovalForAllEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9339,7 +9326,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9354,7 +9340,6 @@ type Query {
     orderBy: BlueprintAuthorizedConsumer_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9367,7 +9352,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9382,7 +9366,6 @@ type Query {
     orderBy: BlueprintAuthorizedMinter_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9395,7 +9378,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9410,7 +9392,6 @@ type Query {
     orderBy: BlueprintBalance_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9423,7 +9404,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9438,7 +9418,6 @@ type Query {
     orderBy: BlueprintBaseMetadataURI_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9451,7 +9430,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9466,7 +9444,6 @@ type Query {
     orderBy: BlueprintBurnEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9479,7 +9456,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9494,7 +9470,6 @@ type Query {
     orderBy: BlueprintDefinition_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9507,7 +9482,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9522,7 +9496,6 @@ type Query {
     orderBy: BlueprintMintEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9535,7 +9508,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9550,7 +9522,6 @@ type Query {
     orderBy: BlueprintTransferBatchEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9563,7 +9534,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9578,7 +9548,6 @@ type Query {
     orderBy: BlueprintTransferSingleEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9591,7 +9560,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9606,7 +9574,6 @@ type Query {
     orderBy: BlueprintURIEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9619,7 +9586,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9631,7 +9597,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9646,7 +9611,6 @@ type Query {
     orderBy: CityBlueprintsOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9662,7 +9626,6 @@ type Query {
     orderBy: CityBlueprints_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9675,7 +9638,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9687,7 +9649,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9702,7 +9663,6 @@ type Query {
     orderBy: CityComponentsOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9718,7 +9678,6 @@ type Query {
     orderBy: CityComponents_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9734,7 +9693,6 @@ type Query {
     orderBy: CityConfigAddressEntry_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9747,7 +9705,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9759,7 +9716,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9774,7 +9730,6 @@ type Query {
     orderBy: CityConfigState_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9790,7 +9745,6 @@ type Query {
     orderBy: CityConfigUintEntry_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9803,7 +9757,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9815,7 +9768,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9830,7 +9782,6 @@ type Query {
     orderBy: CityDistrictsOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9843,7 +9794,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9858,7 +9808,6 @@ type Query {
     orderBy: CityEnchantmentItemsOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9871,7 +9820,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9886,7 +9834,6 @@ type Query {
     orderBy: CityEnchantmentsOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9899,7 +9846,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9914,7 +9860,6 @@ type Query {
     orderBy: CityHistoryOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9927,7 +9872,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9942,7 +9886,6 @@ type Query {
     orderBy: CityMateriaItemsOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9955,7 +9898,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9970,7 +9912,6 @@ type Query {
     orderBy: CityMateriaOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9983,7 +9924,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -9998,7 +9938,6 @@ type Query {
     orderBy: CityStatusOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10011,7 +9950,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10026,7 +9964,6 @@ type Query {
     orderBy: CityValidationOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10039,7 +9976,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10054,7 +9990,6 @@ type Query {
     orderBy: CityWeaponsAddress_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10067,7 +10002,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10082,7 +10016,6 @@ type Query {
     orderBy: ComponentApprovalForAllEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10095,7 +10028,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10110,7 +10042,6 @@ type Query {
     orderBy: ComponentAuthorizedConsumer_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10123,7 +10054,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10138,7 +10068,6 @@ type Query {
     orderBy: ComponentAuthorizedMinter_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10151,7 +10080,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10166,7 +10094,6 @@ type Query {
     orderBy: ComponentBalance_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10179,7 +10106,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10194,7 +10120,6 @@ type Query {
     orderBy: ComponentBaseMetadataURI_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10207,7 +10132,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10222,7 +10146,6 @@ type Query {
     orderBy: ComponentBurnEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10235,7 +10158,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10250,7 +10172,6 @@ type Query {
     orderBy: ComponentDefinition_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10263,7 +10184,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10278,7 +10198,6 @@ type Query {
     orderBy: ComponentMintEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10291,7 +10210,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10306,7 +10224,6 @@ type Query {
     orderBy: ComponentTransferBatchEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10319,7 +10236,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10334,7 +10250,6 @@ type Query {
     orderBy: ComponentTransferSingleEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10347,7 +10262,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10362,7 +10276,6 @@ type Query {
     orderBy: ComponentURIEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10375,7 +10288,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10390,7 +10302,6 @@ type Query {
     orderBy: ConfigInitializedEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10403,7 +10314,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10418,7 +10328,6 @@ type Query {
     orderBy: ConfigOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10431,7 +10340,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10446,7 +10354,6 @@ type Query {
     orderBy: CoreAddressSetEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10459,7 +10366,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10474,7 +10380,6 @@ type Query {
     orderBy: CraftEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10487,7 +10392,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10502,7 +10406,6 @@ type Query {
     orderBy: CraftingOwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10515,7 +10418,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10530,7 +10432,6 @@ type Query {
     orderBy: CraftingPaused_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10543,7 +10444,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10558,7 +10458,6 @@ type Query {
     orderBy: DistrictAuthorizedCaller_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10571,7 +10470,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10586,7 +10484,6 @@ type Query {
     orderBy: EnchantmentAuthorizedCaller_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10599,7 +10496,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10614,7 +10510,6 @@ type Query {
     orderBy: EnchantmentBonusSet_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10627,7 +10522,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10642,7 +10536,6 @@ type Query {
     orderBy: EnchantmentDefinition_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10655,7 +10548,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10670,7 +10562,6 @@ type Query {
     orderBy: EnchantmentItemApprovalForAllEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10683,7 +10574,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10698,7 +10588,6 @@ type Query {
     orderBy: EnchantmentItemAuthorizedConsumer_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10711,7 +10600,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10726,7 +10614,6 @@ type Query {
     orderBy: EnchantmentItemAuthorizedMinter_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10739,7 +10626,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10754,7 +10640,6 @@ type Query {
     orderBy: EnchantmentItemBaseMetadataURISetEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10767,7 +10652,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10782,7 +10666,6 @@ type Query {
     orderBy: EnchantmentItemBurnedEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10795,7 +10678,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10810,7 +10692,6 @@ type Query {
     orderBy: EnchantmentItemDefinition_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10823,7 +10704,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10838,7 +10718,6 @@ type Query {
     orderBy: EnchantmentItemMintedEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10851,7 +10730,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10866,7 +10744,6 @@ type Query {
     orderBy: EnchantmentItemTransferBatchEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10879,7 +10756,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10894,7 +10770,6 @@ type Query {
     orderBy: EnchantmentItemTransferSingleEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10907,7 +10782,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10922,7 +10796,6 @@ type Query {
     orderBy: EnchantmentItemURIEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10935,7 +10808,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10950,7 +10822,6 @@ type Query {
     orderBy: LayerAddedEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10963,7 +10834,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10978,7 +10848,6 @@ type Query {
     orderBy: ManualStatusClearedEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -10991,7 +10860,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11006,7 +10874,6 @@ type Query {
     orderBy: MateriaAuthorizedCaller_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11019,7 +10886,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11034,7 +10900,6 @@ type Query {
     orderBy: MateriaBonus_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11047,7 +10912,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11062,7 +10926,6 @@ type Query {
     orderBy: MateriaDefinition_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11075,7 +10938,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11090,7 +10952,6 @@ type Query {
     orderBy: MateriaItemApprovalForAllEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11103,7 +10964,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11118,7 +10978,6 @@ type Query {
     orderBy: MateriaItemAuthorizedConsumer_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11131,7 +10990,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11146,7 +11004,6 @@ type Query {
     orderBy: MateriaItemAuthorizedMinter_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11159,7 +11016,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11174,7 +11030,6 @@ type Query {
     orderBy: MateriaItemBaseMetadataURISetEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11187,7 +11042,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11202,7 +11056,6 @@ type Query {
     orderBy: MateriaItemBurnedEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11215,7 +11068,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11230,7 +11082,6 @@ type Query {
     orderBy: MateriaItemDefinition_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11243,7 +11094,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11258,7 +11108,6 @@ type Query {
     orderBy: MateriaItemMintedEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11271,7 +11120,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11286,7 +11134,6 @@ type Query {
     orderBy: MateriaItemTransferBatchEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11299,7 +11146,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11314,7 +11160,6 @@ type Query {
     orderBy: MateriaItemTransferSingleEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11327,7 +11172,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11342,7 +11186,6 @@ type Query {
     orderBy: MateriaItemURIEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11355,7 +11198,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11370,7 +11212,6 @@ type Query {
     orderBy: OwnershipTransferRecordedEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11383,7 +11224,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11398,7 +11238,6 @@ type Query {
     orderBy: OwnershipTransferredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11411,7 +11250,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11426,7 +11264,6 @@ type Query {
     orderBy: Player_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11439,7 +11276,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11451,7 +11287,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11466,7 +11301,6 @@ type Query {
     orderBy: PlotCompletion_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11479,7 +11313,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11494,7 +11327,6 @@ type Query {
     orderBy: PlotDistrict_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11507,7 +11339,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11522,7 +11353,6 @@ type Query {
     orderBy: PlotHistoryInitializedEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11535,7 +11365,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11550,7 +11379,6 @@ type Query {
     orderBy: PlotProvenance_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11563,7 +11391,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11578,7 +11405,6 @@ type Query {
     orderBy: PlotQubiq_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11591,7 +11417,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11606,7 +11431,6 @@ type Query {
     orderBy: PlotStats_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11619,7 +11443,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11634,7 +11457,6 @@ type Query {
     orderBy: PlotStatusInfo_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11647,7 +11469,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11662,7 +11483,6 @@ type Query {
     orderBy: PlotStatusUpdatedEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11678,7 +11498,6 @@ type Query {
     orderBy: Plot_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11691,7 +11510,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11706,7 +11524,6 @@ type Query {
     orderBy: QubiqContribution_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11719,7 +11536,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11734,7 +11550,6 @@ type Query {
     orderBy: RecipeDefinition_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11747,7 +11562,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11762,7 +11576,6 @@ type Query {
     orderBy: RecipeDiscoveredEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11775,7 +11588,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11790,7 +11602,6 @@ type Query {
     orderBy: TransferEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11803,7 +11614,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11818,7 +11628,6 @@ type Query {
     orderBy: UintConfigSetEvent_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11831,7 +11640,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11846,7 +11654,6 @@ type Query {
     orderBy: ValidationHooks_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11859,7 +11666,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11874,7 +11680,6 @@ type Query {
     orderBy: WeaponBonuses_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11887,7 +11692,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11902,7 +11706,6 @@ type Query {
     orderBy: WeaponDefinition_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11915,7 +11718,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11930,7 +11732,6 @@ type Query {
     orderBy: WeaponInstance_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11943,7 +11744,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11958,7 +11758,6 @@ type Query {
     orderBy: WeaponSockets_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11971,7 +11770,6 @@ type Query {
     """
     block: Block_height
     id: ID!
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -11986,7 +11784,6 @@ type Query {
     orderBy: WeaponsPaused_orderBy
     orderDirection: OrderDirection
     skip: Int = 0
-
     """
     Set to `allow` to receive data even if the subgraph has skipped over errors while syncing.
     """
@@ -13504,17 +13301,14 @@ type _Block_ {
   The hash of the block
   """
   hash: Bytes
-
   """
   The block number
   """
   number: Int!
-
   """
   The hash of the parent block
   """
   parentHash: Bytes
-
   """
   Integer representation of the timestamp stored in blocks for the chain
   """
@@ -13532,12 +13326,10 @@ type _Meta_ {
   and therefore asks for the latest  block
   """
   block: _Block_!
-
   """
   The deployment ID
   """
   deployment: String!
-
   """
   If `true`, the subgraph encountered indexing errors at some past block
   """
@@ -13549,7 +13341,6 @@ enum _SubgraphErrorPolicy_ {
   Data will be returned even if the subgraph has indexing errors
   """
   allow
-
   """
   If the subgraph has indexing errors, data will be omitted. The default.
   """
