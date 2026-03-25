@@ -858,15 +858,8 @@ export default function App() {
           onExportPng={downloadMapPng}
         />
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1.7fr) minmax(320px, 0.8fr)",
-            gap: 20,
-            alignItems: "start",
-          }}
-        >
-          <div>
+        <div className="cityMapLayout">
+          <div className="cityMapPrimary">
             <ErrorBoundary
               onError={(caughtError) => console.error("Map ErrorBoundary:", caughtError)}
               resetKeys={[
@@ -899,7 +892,7 @@ export default function App() {
             <CityStats plots={filteredPlots} />
           </div>
 
-          <div style={{ display: "grid", gap: 20 }}>
+          <aside className="cityMapSidebar">
             <PlotDetails
               plot={effectiveSelectedPlot}
               onToggleFavorite={handleToggleFavorite}
@@ -931,7 +924,7 @@ export default function App() {
               activeBuildPlotId={activeBuildPlotId}
               onSelectActiveBuildPlotId={setActiveBuildPlotId}
             />
-          </div>
+          </aside>
         </div>
       </section>
 

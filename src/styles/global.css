@@ -233,6 +233,24 @@ select {
   backdrop-filter: blur(8px);
 }
 
+.cityMapLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.8fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.cityMapPrimary,
+.cityMapSidebar {
+  min-width: 0;
+}
+
+.cityMapSidebar {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+}
+
 .splitPanel {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
@@ -333,6 +351,20 @@ textarea {
 @media (max-width: 980px) {
   .hero h1 {
     font-size: 36px;
+  }
+
+  .cityMapLayout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .cityMapPrimary {
+    order: 1;
+  }
+
+  .cityMapSidebar {
+    order: 2;
+    gap: 16px;
   }
 
   .toolbarRow {
