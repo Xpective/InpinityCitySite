@@ -49,20 +49,23 @@ export function parseError(error: unknown, context?: Record<string, unknown>): A
   });
 }
 
+
 export async function retry<T>(
   fn: () => Promise<T>,
   config: { maxRetries?: number; baseDelay?: number } = {}
 ): Promise<T> {
   const { maxRetries = 3, baseDelay = 1000 } = config;
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await fn();
     } catch (error) {
       if (i === maxRetries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, baseDelay * (i + 1)));
+      await new Promise((resolve) => setTimeout(resolve, baseDelay * (i + 1)));
     }
   }
-  throw new Error('Retry failed');
+
+  throw new Error("Retry failed");
 }
 
 export function getUserFriendlyErrorMessage(error: AppError): string {

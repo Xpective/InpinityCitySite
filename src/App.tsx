@@ -254,15 +254,15 @@ export default function App() {
         setLoading(true);
         setError(null);
 
-        const data = await retry(
+        const data = (await retry(
           async () => {
-            return await requestGraphQL(CITY_DASHBOARD_QUERY);
+            return await requestGraphQL<DashboardQueryResult>(CITY_DASHBOARD_QUERY);
           },
           {
             maxRetries: 3,
             baseDelay: 1000,
           }
-        );
+        )) as DashboardQueryResult;
 
         if (!cancelled) {
           setDashboard(data);

@@ -20,7 +20,7 @@ type Props = {
   onSelectPlot: (plot: InfinityPlot) => void;
   showLabels: boolean;
   heatmapMode: boolean;
-  advancedMode: boolean;
+  advancedMode?: boolean;
 };
 
 const STATUS_STYLES = {
@@ -213,7 +213,7 @@ export default function InfinityMap({
   onSelectPlot,
   showLabels,
   heatmapMode,
-  advancedMode,
+  advancedMode = false,
 }: Props) {
   const infinityPath = getInfinityPath();
   const containerRef = useRef<HTMLDivElement>(null);
