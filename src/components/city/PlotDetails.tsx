@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { isFavoritePlot } from "../../lib/favorites";
@@ -27,10 +28,14 @@ type Props = {
   showAdvanced?: boolean;
 };
 
+type LiveWarnings = {
+  district?: string;
+  status?: string;
+  history?: string;
+};
+
 function pretty(value: string): string {
-  return value
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (m) => m.toUpperCase());
+  return value.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 function yesNo(value: boolean): string {
@@ -120,6 +125,22 @@ function normalizePlotId(value?: string | number | null): string | null {
   if (value == null) return null;
   const normalized = String(value).trim();
   return normalized ? normalized : null;
+}
+
+function getErrorMessage(
+  error: unknown,
+  fallback: string
+): string {
+  if (!(error instanceof Error)) return fallback;
+
+  if (
+    error.message.includes("missing revert data") ||
+    error.message.includes("CALL_EXCEPTION")
+  ) {
+    return `${fallback} ABI or contract mismatch on the live deployment.`;
+  }
+
+  return error.message || fallback;
 }
 
 function getOpportunitySignals(
@@ -235,6 +256,57 @@ function getRightsSummary(plot: InfinityPlot): string[] {
   return lines;
 }
 
+function getGamePrepIdeas(
+  plot: InfinityPlot,
+  liveStatus: CityPlotStatusRead | null,
+  liveHistory: CityPlotProvenanceRead | null,
+  liveDistrict: CityDistrictRead | null
+): string[] {
+  const ideas: string[] = [];
+
+  if (plot.policy.isPersonal) {
+    ideas.push("Personal plots are your main entry point for the private build loop.");
+  }
+
+  if (plot.status === "free") {
+    ideas.push("Treat this as a fresh candidate for reservation and first-cell setup.");
+  }
+
+  if (plot.status === "reserved" || plot.status === "owned") {
+    ideas.push("This plot is already in motion. Prioritize Qubiq completion over switching context.");
+  }
+
+  if (liveStatus?.layerEligible) {
+    ideas.push("Mark this plot for a later layer-upgrade path once the base grid is stable.");
+  }
+
+  if (liveDistrict?.bonusBps && liveDistrict.bonusBps > 0) {
+    ideas.push(`District bonus is live (${liveDistrict.bonusBps} bps). Use it for future specialization.`);
+  }
+
+  if (liveHistory && getHistoricWeight(liveHistory) >= 220) {
+    ideas.push("High historic weight makes this a prestige or showcase candidate.");
+  }
+
+  if (plot.policy.isCommunity || plot.policy.isBorderline || plot.policy.isNexus) {
+    ideas.push("Keep this zone out of the personal build loop and treat it as shared-world planning.");
+  }
+
+  if (plot.layoutState === "corrected") {
+    ideas.push("Faction side was corrected visually. Keep canonical side checks enabled before launch.");
+  }
+
+  if (plot.statusInfo?.maintenanceLevel === "overdue") {
+    ideas.push("Overdue maintenance is a good narrative hook for repair or upkeep gameplay.");
+  }
+
+  if (!ideas.length) {
+    ideas.push("Good fallback plot for early economy and onboarding flow tests.");
+  }
+
+  return ideas.slice(0, 5);
+}
+
 export default function PlotDetails({
   plot,
   onToggleFavorite,
@@ -245,51 +317,108 @@ export default function PlotDetails({
   const [liveHistory, setLiveHistory] = useState<CityPlotProvenanceRead | null>(null);
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [liveWarnings, setLiveWarnings] = useState<LiveWarnings>({});
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [liveCoreOpen, setLiveCoreOpen] = useState(showAdvanced);
+  const [historyOpen, setHistoryOpen] = useState(showAdvanced);
 
   const normalizedPlotId = useMemo(
     () => normalizePlotId(plot?.plotId),
     [plot?.plotId]
   );
 
+  const shouldLoadLive =
+    Boolean(normalizedPlotId) && (showAdvanced || liveCoreOpen || historyOpen);
+
+  useEffect(() => {
+    if (showAdvanced) {
+      setLiveCoreOpen(true);
+      setHistoryOpen(true);
+    }
+  }, [showAdvanced]);
+
+  useEffect(() => {
+    if (!plot) {
+      setLiveDistrict(null);
+      setLiveStatus(null);
+      setLiveHistory(null);
+      setLiveError(null);
+      setLiveWarnings({});
+      setLiveLoading(false);
+      return;
+    }
+
+    setLiveDistrict(null);
+    setLiveStatus(null);
+    setLiveHistory(null);
+    setLiveError(null);
+    setLiveWarnings({});
+  }, [plot?.id]);
+
   useEffect(() => {
     let cancelled = false;
 
     async function loadLiveDetails() {
-      if (!normalizedPlotId) {
-        setLiveDistrict(null);
-        setLiveStatus(null);
-        setLiveHistory(null);
-        setLiveError(null);
-        setLiveLoading(false);
+      if (!normalizedPlotId || !shouldLoadLive) {
         return;
       }
 
       setLiveLoading(true);
       setLiveError(null);
+      setLiveWarnings({});
 
-      try {
-        const [district, status, history] = await Promise.all([
-          getDistrict(normalizedPlotId),
-          readCityStatus(normalizedPlotId),
-          getPlotProvenance(normalizedPlotId),
-        ]);
+      const [districtResult, statusResult, historyResult] = await Promise.allSettled([
+        getDistrict(normalizedPlotId),
+        readCityStatus(normalizedPlotId),
+        getPlotProvenance(normalizedPlotId),
+      ]);
 
-        if (cancelled) return;
+      if (cancelled) return;
 
-        setLiveDistrict(district);
-        setLiveStatus(status);
-        setLiveHistory(history);
-        setLiveLoading(false);
-      } catch (error) {
-        if (cancelled) return;
+      const nextWarnings: LiveWarnings = {};
 
+      if (districtResult.status === "fulfilled") {
+        setLiveDistrict(districtResult.value);
+      } else {
         setLiveDistrict(null);
-        setLiveStatus(null);
-        setLiveHistory(null);
-        setLiveLoading(false);
-        setLiveError(
-          error instanceof Error ? error.message : "Live plot details failed."
+        nextWarnings.district = getErrorMessage(
+          districtResult.reason,
+          "District read failed."
         );
+      }
+
+      if (statusResult.status === "fulfilled") {
+        setLiveStatus(statusResult.value);
+      } else {
+        setLiveStatus(null);
+        nextWarnings.status = getErrorMessage(
+          statusResult.reason,
+          "City status read failed."
+        );
+      }
+
+      if (historyResult.status === "fulfilled") {
+        setLiveHistory(historyResult.value);
+      } else {
+        setLiveHistory(null);
+        nextWarnings.history = getErrorMessage(
+          historyResult.reason,
+          "History read failed."
+        );
+      }
+
+      const succeededCount =
+        Number(districtResult.status === "fulfilled") +
+        Number(statusResult.status === "fulfilled") +
+        Number(historyResult.status === "fulfilled");
+
+      setLiveWarnings(nextWarnings);
+      setLiveLoading(false);
+
+      if (succeededCount === 0) {
+        setLiveError("No live source could be loaded for this plot.");
+      } else {
+        setLiveError(null);
       }
     }
 
@@ -298,7 +427,7 @@ export default function PlotDetails({
     return () => {
       cancelled = true;
     };
-  }, [normalizedPlotId]);
+  }, [normalizedPlotId, shouldLoadLive, refreshTick]);
 
   if (!plot) {
     return (
@@ -319,6 +448,7 @@ export default function PlotDetails({
 
   const signals = getOpportunitySignals(plot, liveStatus, liveHistory, liveDistrict);
   const rightsSummary = getRightsSummary(plot);
+  const prepIdeas = getGamePrepIdeas(plot, liveStatus, liveHistory, liveDistrict);
 
   return (
     <div className="detailsCard">
@@ -383,7 +513,7 @@ export default function PlotDetails({
 
       <hr style={{ opacity: 0.15, margin: "16px 0" }} />
 
-      <h4 style={sectionTitleStyle()}>Opportunity Signals</h4>
+      <h4 style={sectionTitleStyle()}>Game Prep</h4>
       <div style={cardBlockStyle()}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {signals.map((signal, index) => (
@@ -392,15 +522,70 @@ export default function PlotDetails({
             </span>
           ))}
         </div>
+
+        <div style={{ display: "grid", gap: 6 }}>
+          {prepIdeas.map((idea, index) => (
+            <div key={index}>• {idea}</div>
+          ))}
+        </div>
       </div>
 
-      <details className="detailSection" open={showAdvanced}>
+      <details
+        className="detailSection"
+        open={liveCoreOpen}
+        onToggle={(event) =>
+          setLiveCoreOpen((event.currentTarget as HTMLDetailsElement).open)
+        }
+      >
         <summary className="detailSectionSummary">Live core data</summary>
-        <div style={cardBlockStyle()}>
+
+        <div style={{ ...cardBlockStyle(), marginTop: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <div className="muted">
+              Reads are loaded independently so one contract failure does not blank the whole panel.
+            </div>
+
+            <button
+              type="button"
+              className="toolbarButton"
+              onClick={() => setRefreshTick((value) => value + 1)}
+            >
+              Refresh live reads
+            </button>
+          </div>
+
           {liveLoading && <div>Loading live district / status / history...</div>}
           {liveError && <div style={{ color: "#ff9d9d" }}>{liveError}</div>}
 
-          {!liveLoading && !liveError && (
+          {Object.values(liveWarnings).length > 0 && (
+            <div style={{ display: "grid", gap: 6 }}>
+              {liveWarnings.district && (
+                <div style={{ color: "#ffcf99" }}>
+                  <strong>District:</strong> {liveWarnings.district}
+                </div>
+              )}
+              {liveWarnings.status && (
+                <div style={{ color: "#ffcf99" }}>
+                  <strong>Status:</strong> {liveWarnings.status}
+                </div>
+              )}
+              {liveWarnings.history && (
+                <div style={{ color: "#ffcf99" }}>
+                  <strong>History:</strong> {liveWarnings.history}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!liveLoading && (
             <>
               <div>
                 <strong>Onchain Plot ID:</strong> {normalizedPlotId || "—"}
@@ -442,9 +627,16 @@ export default function PlotDetails({
         </div>
       </details>
 
-      <details className="detailSection" open={showAdvanced}>
+      <details
+        className="detailSection"
+        open={historyOpen}
+        onToggle={(event) =>
+          setHistoryOpen((event.currentTarget as HTMLDetailsElement).open)
+        }
+      >
         <summary className="detailSectionSummary">History, activity and value model</summary>
-        <div className="detailsGrid" style={{ marginBottom: 12 }}>
+
+        <div className="detailsGrid" style={{ marginTop: 12, marginBottom: 12 }}>
           <div>Historic Score: {provenance?.historicScore ?? "—"}</div>
           <div>Legacy Score: {provenance?.legacyScore ?? "—"}</div>
           <div>Provenance Score: {provenance?.provenanceScore ?? "—"}</div>
@@ -473,9 +665,9 @@ export default function PlotDetails({
         </div>
 
         <div className="infoNote" style={{ marginTop: 12 }}>
-          Validation helper rows were removed from the default panel because they used
-          a hardcoded slot and cell context. Reconnect them later only with the active
-          build slot and selected Qubiq cell from the terminal.
+          Validation helper rows stay removed here because they previously used a hardcoded
+          slot and cell context. Reconnect them only from the active build slot and selected
+          Qubiq cell inside the terminal.
         </div>
       </details>
     </div>
