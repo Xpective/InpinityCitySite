@@ -18,6 +18,8 @@ type BuildPlotOption = {
   label: string;
 };
 
+type PlannedFaction = "inpinity" | "inphinity";
+
 type Props = {
   plot: InfinityPlot | null;
   viewedPlot?: InfinityPlot | null;
@@ -54,6 +56,8 @@ type Props = {
   activeBuildPlotId: string;
   onSelectActiveBuildPlotId: (plotId: string) => void;
   buildMode?: "next" | "existing";
+  preferredFaction?: PlannedFaction | null;
+  onSelectPreferredFaction: (faction: PlannedFaction) => void;
   showAdvanced?: boolean;
 };
 
@@ -126,6 +130,42 @@ function selectStyle(): CSSProperties {
     border: "1px solid rgba(255,255,255,0.12)",
     color: "white",
     width: "100%",
+  };
+}
+
+function factionButtonStyle(
+  faction: PlannedFaction,
+  active: boolean
+): CSSProperties {
+  const blue = faction === "inpinity";
+
+  return {
+    padding: "12px 14px",
+    borderRadius: 12,
+    border: blue
+      ? active
+        ? "1px solid rgba(122,170,255,0.95)"
+        : "1px solid rgba(82,136,255,0.45)"
+      : active
+      ? "1px solid rgba(255,130,130,0.95)"
+      : "1px solid rgba(255,95,95,0.45)",
+    background: blue
+      ? active
+        ? "linear-gradient(180deg, rgba(74,123,255,0.34), rgba(46,78,180,0.34))"
+        : "rgba(74,123,255,0.16)"
+      : active
+      ? "linear-gradient(180deg, rgba(255,88,88,0.34), rgba(170,46,46,0.34))"
+      : "rgba(255,88,88,0.16)",
+    color: "#eef2ff",
+    fontWeight: 800,
+    textAlign: "center",
+    cursor: "pointer",
+    minHeight: 48,
+    boxShadow: active
+      ? blue
+        ? "0 0 0 1px rgba(122,170,255,0.25), 0 0 22px rgba(74,123,255,0.18)"
+        : "0 0 0 1px rgba(255,130,130,0.25), 0 0 22px rgba(255,88,88,0.18)"
+      : "none",
   };
 }
 
@@ -206,6 +246,7 @@ function getPrimaryAction(props: {
   selectedCityKeyTokenId: string;
   ownedCityKeys: CityKeyOption[];
   buildMode: "next" | "existing";
+  preferredFaction?: PlannedFaction | null;
 }): {
   label: string;
   helper: string;
@@ -222,6 +263,7 @@ function getPrimaryAction(props: {
     selectedCityKeyTokenId,
     ownedCityKeys,
     buildMode,
+    preferredFaction,
   } = props;
 
   const startedBuild = isStartedBuildPlot(plot, reservedPlotId, wallet.address);
@@ -344,19 +386,22 @@ function getPrimaryAction(props: {
     (!wallet.chosenFaction || wallet.chosenFaction === "none")
   ) {
     return {
-      label: "Choose Faction",
-      helper:
-        "Your City Key is already set. Choose exactly one faction for this wallet.",
-      disabled: false,
+      label: preferredFaction ? `Choose ${pretty(preferredFaction)}` : "Choose Faction",
+      helper: preferredFaction
+        ? `Confirm ${pretty(preferredFaction)} for this wallet. This is the one-time faction step before personal plot reservation.`
+        : "Choose exactly one faction for this wallet. Blue = Inpinity, red = Inphinity.",
+      disabled: !preferredFaction,
       action: "flow",
     };
   }
 
   if (flowResult?.code === "needs_faction") {
     return {
-      label: "Choose Faction",
-      helper: "Choose exactly one faction for this wallet.",
-      disabled: false,
+      label: preferredFaction ? `Choose ${pretty(preferredFaction)}` : "Choose Faction",
+      helper: preferredFaction
+        ? `Confirm ${pretty(preferredFaction)} for this wallet.`
+        : "Choose exactly one faction for this wallet. Blue = Inpinity, red = Inphinity.",
+      disabled: !preferredFaction,
       action: "flow",
     };
   }
@@ -566,6 +611,8 @@ export default function MintPreparationPanel({
   activeBuildPlotId,
   onSelectActiveBuildPlotId,
   buildMode = "existing",
+  preferredFaction = null,
+  onSelectPreferredFaction,
   showAdvanced = false,
 }: Props) {
   const targetQubiqs = 25;
@@ -599,6 +646,7 @@ export default function MintPreparationPanel({
     selectedCityKeyTokenId,
     ownedCityKeys,
     buildMode,
+    preferredFaction,
   });
 
   const primaryOnClick =
@@ -613,6 +661,14 @@ export default function MintPreparationPanel({
     !!viewedPlot && !!plot && viewedPlot.id !== plot.id;
   const buildModeLabel =
     buildMode === "existing" ? "Existing active plot" : "Next personal plot";
+
+  const setupFactionLocked =
+    wallet.chosenFaction === "inpinity" || wallet.chosenFaction === "inphinity";
+  const plannedFaction = setupFactionLocked ? wallet.chosenFaction : preferredFaction;
+  const needsCityKeySetup = wallet.hasCityKey === false;
+  const showCityKeySetup = needsCityKeySetup || showAdvanced;
+  const showFactionSetup =
+    wallet.hasCityKey === true && (!setupFactionLocked || showAdvanced);
 
   return (
     <section className="panel">
@@ -660,6 +716,53 @@ export default function MintPreparationPanel({
         </div>
 
         <div style={panelBoxStyle()}>
+          <strong>Setup Status</strong>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <span style={badgeStyle(wallet.isConnected ? "ok" : "neutral")}>
+              Wallet {wallet.isConnected ? "connected" : "not connected"}
+            </span>
+            <span
+              style={badgeStyle(
+                wallet.hasCityKey === true
+                  ? "ok"
+                  : wallet.hasCityKey === false
+                  ? "bad"
+                  : "neutral"
+              )}
+            >
+              City Key {wallet.hasCityKey === true ? "set" : wallet.hasCityKey === false ? "missing" : "unknown"}
+            </span>
+            <span
+              style={badgeStyle(
+                setupFactionLocked
+                  ? "ok"
+                  : wallet.hasCityKey === true
+                  ? "bad"
+                  : "neutral"
+              )}
+            >
+              Faction {plannedFaction ? pretty(plannedFaction) : "not chosen"}
+            </span>
+          </div>
+
+          {wallet.hasCityKey === true && !showAdvanced && (
+            <div className="infoNote">
+              City Key is already linked for this wallet, so the full selector stays hidden in normal mode.
+            </div>
+          )}
+
+          {setupFactionLocked ? (
+            <div className="infoNote">
+              <strong>Faction locked:</strong> {pretty(wallet.chosenFaction || "none")}. After this point the main flow is just build target, Qubiq cell and resources.
+            </div>
+          ) : wallet.hasCityKey === true ? (
+            <div className="infoNote">
+              Choose the faction once with the colored buttons below. <strong>Inpinity is blue</strong> and <strong>Inphinity is red</strong>.
+            </div>
+          ) : null}
+        </div>
+
+        <div style={panelBoxStyle()}>
           <strong>Build Overview</strong>
           <div>
             <strong>Build Mode:</strong> {buildModeLabel}
@@ -683,6 +786,9 @@ export default function MintPreparationPanel({
             <strong>Side:</strong> {plot ? pretty(plot.side) : "—"}
           </div>
           <div>
+            <strong>Chosen / planned faction:</strong> {plannedFaction ? pretty(plannedFaction) : "not chosen yet"}
+          </div>
+          <div>
             <strong>Selected Cell:</strong> ({selectedQubiqCell.x}, {selectedQubiqCell.y})
           </div>
           {plot?.layoutNote && (
@@ -692,38 +798,113 @@ export default function MintPreparationPanel({
           )}
         </div>
 
-        <div style={panelBoxStyle()}>
-          <strong>City Key 🔑</strong>
+        {showCityKeySetup && (
+          <div style={panelBoxStyle()}>
+            <strong>City Key 🔑</strong>
 
-          <div>
-            <strong>Owned InpinityNFTs:</strong> {ownedCityKeys.length}
+            <div>
+              <strong>Owned InpinityNFTs:</strong> {ownedCityKeys.length}
+            </div>
+
+            {wallet.hasCityKey === true && !needsCityKeySetup ? (
+              <>
+                <div className="infoNote">
+                  A City Key is already linked on this wallet. The selector only stays visible in advanced mode so the normal build flow stays compact.
+                </div>
+
+                {showAdvanced && ownedCityKeys.length > 0 ? (
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span>
+                      <strong>Inspect / switch selected City Key token</strong>
+                    </span>
+                    <select
+                      value={selectedCityKeyTokenId}
+                      onChange={(e) => onSelectCityKeyTokenId(e.target.value)}
+                      style={selectStyle()}
+                    >
+                      {ownedCityKeys.map((item) => (
+                        <option key={item.tokenId} value={item.tokenId} style={{ color: "black" }}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </>
+            ) : ownedCityKeys.length > 0 ? (
+              <label style={{ display: "grid", gap: 6 }}>
+                <span>
+                  <strong>Selected City Key Token</strong>
+                </span>
+                <select
+                  value={selectedCityKeyTokenId}
+                  onChange={(e) => onSelectCityKeyTokenId(e.target.value)}
+                  style={selectStyle()}
+                >
+                  {ownedCityKeys.map((item) => (
+                    <option
+                      key={item.tokenId}
+                      value={item.tokenId}
+                      style={{ color: "black" }}
+                    >
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <div>No InpinityNFT city keys found in this wallet.</div>
+            )}
           </div>
+        )}
 
-          {ownedCityKeys.length > 0 ? (
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>
-                <strong>Selected City Key Token</strong>
-              </span>
-              <select
-                value={selectedCityKeyTokenId}
-                onChange={(e) => onSelectCityKeyTokenId(e.target.value)}
-                style={selectStyle()}
-              >
-                {ownedCityKeys.map((item) => (
-                  <option
-                    key={item.tokenId}
-                    value={item.tokenId}
-                    style={{ color: "black" }}
+        {showFactionSetup && (
+          <div style={panelBoxStyle()}>
+            <strong>{setupFactionLocked ? "Faction Locked" : "Choose Faction"}</strong>
+
+            {setupFactionLocked ? (
+              <div className="infoNote">
+                This wallet is already fixed to <strong>{pretty(wallet.chosenFaction || "none")}</strong>. You do not need to repeat this step to keep building Qubiqs.
+              </div>
+            ) : (
+              <>
+                <div>
+                  Choose the wallet faction clearly before reservation. <strong>Inpinity = blue</strong>, <strong>Inphinity = red</strong>.
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  <button
+                    type="button"
+                    style={factionButtonStyle("inpinity", preferredFaction === "inpinity")}
+                    onClick={() => onSelectPreferredFaction("inpinity")}
                   >
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <div>No InpinityNFT city keys found in this wallet.</div>
-          )}
-        </div>
+                    Inpinity
+                  </button>
+
+                  <button
+                    type="button"
+                    style={factionButtonStyle("inphinity", preferredFaction === "inphinity")}
+                    onClick={() => onSelectPreferredFaction("inphinity")}
+                  >
+                    Inphinity
+                  </button>
+                </div>
+
+                <div className="infoNote">
+                  {preferredFaction
+                    ? `Current choice: ${pretty(preferredFaction)}. Press “${primaryAction.label}” to lock this wallet to that side.`
+                    : "No faction selected yet. Pick one of the two colored buttons first."}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         <div style={panelBoxStyle()}>
           <strong>Build Target Selector</strong>

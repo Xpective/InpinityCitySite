@@ -4,6 +4,7 @@ import CityToolbar from "./components/city/CityToolbar";
 import PlotDetails from "./components/city/PlotDetails";
 import InfinityMap from "./components/city/InfinityMap";
 import MintPreparationPanel from "./components/city/MintPreparationPanel";
+import ItemInspectorPanel from "./components/inspector/ItemInspectorPanel";
 import { useLivePlotProgress } from "./hooks/useLivePlotProgress";
 
 import { getFavoritePlotIds, toggleFavoritePlot } from "./lib/favorites";
@@ -67,6 +68,8 @@ type BuildPlotOption = {
   plotId: string;
   label: string;
 };
+
+type SelectableFaction = "inpinity" | "inphinity";
 
 const NEXT_BUILD_OPTION_ID = "__next__";
 
@@ -150,6 +153,10 @@ function buildPlotOptionLabel(plot: InfinityPlot): string {
   return `${idPart}${factionPart}${statusPart}`;
 }
 
+function prettyFaction(value: SelectableFaction): string {
+  return value === "inpinity" ? "Inpinity" : "Inphinity";
+}
+
 function isExistingBuildPlotId(plotId: string): boolean {
   return !!plotId && plotId !== NEXT_BUILD_OPTION_ID;
 }
@@ -181,6 +188,32 @@ function writeStoredFlag(key: string, value: boolean): void {
   }
 }
 
+function readStoredFaction(key: string): SelectableFaction | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw === "inpinity" || raw === "inphinity" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredFaction(key: string, value: SelectableFaction | null): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    if (!value) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+
+    window.localStorage.setItem(key, value);
+  } catch {
+    // ignore storage failures
+  }
+}
+
 export default function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [jumpTarget, setJumpTarget] = useState("");
@@ -192,6 +225,12 @@ export default function App() {
   );
   const [showAdvanced, setShowAdvanced] = useState(() =>
     readStoredFlag("inpinity-city.advanced-mode", false)
+  );
+  const [showInspector, setShowInspector] = useState(() =>
+    readStoredFlag("inpinity-city.inspector-mode", false)
+  );
+  const [preferredFaction, setPreferredFaction] = useState<SelectableFaction | null>(() =>
+    readStoredFaction("inpinity-city.preferred-faction")
   );
 
   const [availabilityFilter, setAvailabilityFilter] =
@@ -251,6 +290,14 @@ export default function App() {
   useEffect(() => {
     writeStoredFlag("inpinity-city.advanced-mode", showAdvanced);
   }, [showAdvanced]);
+
+  useEffect(() => {
+    writeStoredFlag("inpinity-city.inspector-mode", showInspector);
+  }, [showInspector]);
+
+  useEffect(() => {
+    writeStoredFaction("inpinity-city.preferred-faction", preferredFaction);
+  }, [preferredFaction]);
 
   useEffect(() => {
     let cancelled = false;
@@ -415,6 +462,22 @@ export default function App() {
       cancelled = true;
     };
   }, [wallet.isConnected, wallet.address, retryCount]);
+
+  useEffect(() => {
+    if (wallet.chosenFaction === "inpinity" || wallet.chosenFaction === "inphinity") {
+      if (preferredFaction !== wallet.chosenFaction) {
+        setPreferredFaction(wallet.chosenFaction);
+      }
+      return;
+    }
+
+    if (
+      !preferredFaction &&
+      (selectedPlot?.faction === "inpinity" || selectedPlot?.faction === "inphinity")
+    ) {
+      setPreferredFaction(selectedPlot.faction as SelectableFaction);
+    }
+  }, [wallet.chosenFaction, preferredFaction, selectedPlot?.faction]);
 
   const basePlots = useMemo(() => {
     return generateInfinityPlots();
@@ -685,9 +748,15 @@ export default function App() {
   }, [dashboard]);
 
   const selectedPlotSummary = selectedPlot?.label || "No plot selected";
-  const selectedFactionSummary = selectedPlot
+  const selectedSideSummary = selectedPlot
     ? `${selectedPlot.faction} · ${selectedPlot.side}`
     : "—";
+  const factionChoiceSummary =
+    wallet.chosenFaction && wallet.chosenFaction !== "none"
+      ? `${prettyFaction(wallet.chosenFaction)} locked`
+      : preferredFaction
+      ? `${prettyFaction(preferredFaction)} planned`
+      : "not chosen";
   const buildTargetSummary =
     buildMode === "existing"
       ? buildTargetPlot?.label || activeBuildPlotId || "—"
@@ -715,9 +784,7 @@ export default function App() {
         desiredFaction:
           wallet.chosenFaction && wallet.chosenFaction !== "none"
             ? wallet.chosenFaction
-            : buildTargetPlot?.faction === "inphinity"
-            ? "inphinity"
-            : "inpinity",
+            : preferredFaction,
         qubiqX: selectedQubiqCell.x,
         qubiqY: selectedQubiqCell.y,
         resourceEligibility,
@@ -781,6 +848,14 @@ export default function App() {
             {showAdvanced ? "Hide Advanced" : "Show Advanced"}
           </button>
 
+          <button
+            type="button"
+            className={`toolbarButton ${showInspector ? "active" : ""}`}
+            onClick={() => setShowInspector((value) => !value)}
+          >
+            {showInspector ? "Hide Inspector" : "Show Inspector"}
+          </button>
+
           {!wallet.isConnected && (
             <button type="button" className="toolbarButton" onClick={handleConnectWallet}>
               Connect Wallet
@@ -802,8 +877,12 @@ export default function App() {
             <strong>{selectedPlotSummary}</strong>
           </div>
           <div className="card">
-            <div className="muted">Faction / Side</div>
-            <strong>{selectedFactionSummary}</strong>
+            <div className="muted">Faction Choice</div>
+            <strong>{factionChoiceSummary}</strong>
+          </div>
+          <div className="card">
+            <div className="muted">Selected Side</div>
+            <strong>{selectedSideSummary}</strong>
           </div>
           <div className="card">
             <div className="muted">City Key</div>
@@ -1020,11 +1099,20 @@ export default function App() {
               activeBuildPlotId={activeBuildPlotId}
               onSelectActiveBuildPlotId={setActiveBuildPlotId}
               buildMode={buildMode}
+              preferredFaction={preferredFaction}
+              onSelectPreferredFaction={(faction) => setPreferredFaction(faction)}
               showAdvanced={showAdvanced}
             />
           </aside>
         </div>
       </section>
+
+      {showInspector && (
+        <ItemInspectorPanel
+          walletAddress={wallet.address}
+          showAdvanced={showAdvanced}
+        />
+      )}
 
       {showAdvanced && (
         <section className="panel panelHint">
