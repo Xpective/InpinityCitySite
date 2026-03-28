@@ -20,6 +20,7 @@ type BuildPlotOption = {
 
 type Props = {
   plot: InfinityPlot | null;
+  viewedPlot?: InfinityPlot | null;
   wallet: WalletState;
   eligibility: PlotEligibility;
   resourceEligibility?: ResourceEligibility | null;
@@ -52,6 +53,7 @@ type Props = {
   buildPlotOptions: BuildPlotOption[];
   activeBuildPlotId: string;
   onSelectActiveBuildPlotId: (plotId: string) => void;
+  buildMode?: "next" | "existing";
   showAdvanced?: boolean;
 };
 
@@ -63,6 +65,10 @@ function shortAddress(address?: string | null): string {
   if (!address) return "—";
   if (address.length < 10) return address;
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function normalizeAddress(value?: string | null): string {
+  return (value || "").trim().toLowerCase();
 }
 
 function badgeStyle(kind: "ok" | "bad" | "neutral"): CSSProperties {
@@ -163,10 +169,31 @@ function hasReservedPlotIdentity(
   return !!reservedPlotId || !!flowResult?.plotId;
 }
 
-function isStartedBuildPlot(plot: InfinityPlot | null, reservedPlotId?: string | null): boolean {
+function isStartedBuildPlot(
+  plot: InfinityPlot | null,
+  reservedPlotId?: string | null,
+  walletAddress?: string | null
+): boolean {
   if (!plot) return false;
   if (reservedPlotId && plot.plotId === reservedPlotId) return true;
-  return plot.status === "reserved" || plot.status === "owned";
+  if (plot.status !== "reserved" && plot.status !== "owned") return false;
+
+  return (
+    !!walletAddress &&
+    !!plot.owner &&
+    normalizeAddress(plot.owner) === normalizeAddress(walletAddress)
+  );
+}
+
+function isForeignStartedPlot(
+  plot: InfinityPlot | null,
+  reservedPlotId?: string | null,
+  walletAddress?: string | null
+): boolean {
+  if (!plot) return false;
+  if (plot.status !== "reserved" && plot.status !== "owned") return false;
+
+  return !isStartedBuildPlot(plot, reservedPlotId, walletAddress);
 }
 
 function getPrimaryAction(props: {
@@ -178,6 +205,7 @@ function getPrimaryAction(props: {
   reservedPlotId?: string | null;
   selectedCityKeyTokenId: string;
   ownedCityKeys: CityKeyOption[];
+  buildMode: "next" | "existing";
 }): {
   label: string;
   helper: string;
@@ -193,9 +221,11 @@ function getPrimaryAction(props: {
     reservedPlotId,
     selectedCityKeyTokenId,
     ownedCityKeys,
+    buildMode,
   } = props;
 
-  const startedBuild = isStartedBuildPlot(plot, reservedPlotId);
+  const startedBuild = isStartedBuildPlot(plot, reservedPlotId, wallet.address);
+  const foreignStarted = isForeignStartedPlot(plot, reservedPlotId, wallet.address);
 
   if (flowBusy) {
     return {
@@ -238,7 +268,7 @@ function getPrimaryAction(props: {
     return {
       label: "Borderline Later",
       helper:
-        "Borderline plots are cooperative zones and will use shared contribution later.",
+        "Borderline plots are cooperative zones and are not privately buildable yet.",
       disabled: true,
       action: "none",
     };
@@ -247,7 +277,17 @@ function getPrimaryAction(props: {
   if (plot.policy.isNexus) {
     return {
       label: "Nexus Later",
-      helper: "Nexus plots are shared central zones and are not privately buildable.",
+      helper: "Nexus plots are shared core infrastructure and are not privately buildable.",
+      disabled: true,
+      action: "none",
+    };
+  }
+
+  if (foreignStarted) {
+    return {
+      label: "View Only",
+      helper:
+        "This started plot belongs to another wallet. Use 'Next personal plot' for a new reservation or choose one of your own active plots.",
       disabled: true,
       action: "none",
     };
@@ -362,7 +402,7 @@ function getPrimaryAction(props: {
     return {
       label: "Continue Building",
       helper:
-        "This personal plot is already reserved or started. Continue contributing Qubiq cells.",
+        "This personal plot is already reserved or started by your wallet. Continue contributing Qubiq cells.",
       disabled: false,
       action: "flow",
     };
@@ -379,8 +419,11 @@ function getPrimaryAction(props: {
 
   if (wallet.chosenFaction && wallet.chosenFaction !== "none") {
     return {
-      label: "Reserve Plot",
-      helper: "Reserve the next personal plot for this wallet.",
+      label: buildMode === "next" ? "Reserve Next Plot" : "Reserve Plot",
+      helper:
+        buildMode === "next"
+          ? "Reserve the next personal plot for this wallet. The selector is currently set to next-slot mode."
+          : "Reserve the next personal plot for this wallet.",
       disabled: false,
       action: "flow",
     };
@@ -498,6 +541,7 @@ function CollapsibleSection({
 
 export default function MintPreparationPanel({
   plot,
+  viewedPlot = null,
   wallet,
   eligibility,
   resourceEligibility,
@@ -521,6 +565,7 @@ export default function MintPreparationPanel({
   buildPlotOptions,
   activeBuildPlotId,
   onSelectActiveBuildPlotId,
+  buildMode = "existing",
   showAdvanced = false,
 }: Props) {
   const targetQubiqs = 25;
@@ -536,7 +581,10 @@ export default function MintPreparationPanel({
     liveCompletion?.completionPercent ??
     Math.round((currentQubiqs / targetQubiqs) * 100);
 
-  const effectivePlotId = activeBuildPlotId || reservedPlotId || plot?.plotId || "—";
+  const effectivePlotId =
+    buildMode === "existing"
+      ? activeBuildPlotId || reservedPlotId || plot?.plotId || "—"
+      : "next slot / not reserved yet";
 
   const flowBadgeKind =
     flowStep === "done" ? "ok" : flowStep === "error" ? "bad" : "neutral";
@@ -550,6 +598,7 @@ export default function MintPreparationPanel({
     reservedPlotId,
     selectedCityKeyTokenId,
     ownedCityKeys,
+    buildMode,
   });
 
   const primaryOnClick =
@@ -560,6 +609,10 @@ export default function MintPreparationPanel({
       : undefined;
 
   const importantReasons = eligibility.reasons.slice(0, 2);
+  const viewingDifferentPlot =
+    !!viewedPlot && !!plot && viewedPlot.id !== plot.id;
+  const buildModeLabel =
+    buildMode === "existing" ? "Existing active plot" : "Next personal plot";
 
   return (
     <section className="panel">
@@ -609,8 +662,17 @@ export default function MintPreparationPanel({
         <div style={panelBoxStyle()}>
           <strong>Build Overview</strong>
           <div>
-            <strong>Selected Plot:</strong> {plot?.label || "—"}
+            <strong>Build Mode:</strong> {buildModeLabel}
           </div>
+          <div>
+            <strong>Build Target:</strong> {plot?.label || "—"}
+          </div>
+          {viewingDifferentPlot && (
+            <div className="infoNote">
+              <strong>Viewing:</strong> {viewedPlot?.label}. <strong>Terminal target:</strong>{" "}
+              {plot?.label}. Switch the selector to <em>Next personal plot</em> if you want the terminal to stop following an older active build.
+            </div>
+          )}
           <div>
             <strong>Onchain Plot ID:</strong> {effectivePlotId}
           </div>
@@ -664,12 +726,12 @@ export default function MintPreparationPanel({
         </div>
 
         <div style={panelBoxStyle()}>
-          <strong>Active Build Plot</strong>
+          <strong>Build Target Selector</strong>
 
           {buildPlotOptions.length > 0 ? (
             <label style={{ display: "grid", gap: 6 }}>
               <span>
-                <strong>Choose reserved / active plot</strong>
+                <strong>Choose next-slot mode or one of your active plots</strong>
               </span>
               <select
                 value={activeBuildPlotId}
@@ -689,6 +751,16 @@ export default function MintPreparationPanel({
             </label>
           ) : (
             <div>No reserved or active personal plots detected yet.</div>
+          )}
+
+          <div className="infoNote">
+            <strong>Why the terminal looked stuck:</strong> the previous UI always defaulted back to your first active plot. The selector now lets you switch back to <em>Next personal plot</em> so the map selection can prepare a new reservation.
+          </div>
+
+          {buildMode === "next" && (
+            <div className="infoNote">
+              Next-slot reservation follows the registry order. Until the next plot is actually reserved, the map selection is used as planning context and faction-side guidance.
+            </div>
           )}
         </div>
 

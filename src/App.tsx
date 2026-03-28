@@ -68,6 +68,8 @@ type BuildPlotOption = {
   label: string;
 };
 
+const NEXT_BUILD_OPTION_ID = "__next__";
+
 function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -148,6 +150,10 @@ function buildPlotOptionLabel(plot: InfinityPlot): string {
   return `${idPart}${factionPart}${statusPart}`;
 }
 
+function isExistingBuildPlotId(plotId: string): boolean {
+  return !!plotId && plotId !== NEXT_BUILD_OPTION_ID;
+}
+
 function shortAddress(value?: string | null): string {
   if (!value) return "—";
   return value.length > 10 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
@@ -218,7 +224,7 @@ export default function App() {
   const [retryCount, setRetryCount] = useState(0);
 
   const [reservedPlotId, setReservedPlotId] = useState<string | null>(null);
-  const [activeBuildPlotId, setActiveBuildPlotId] = useState<string>("");
+  const [activeBuildPlotId, setActiveBuildPlotId] = useState<string>(NEXT_BUILD_OPTION_ID);
 
   const [selectedQubiqCell, setSelectedQubiqCell] = useState<SelectedQubiqCell>({
     x: 0,
@@ -448,7 +454,7 @@ export default function App() {
       });
     }
 
-    return Array.from(optionsMap.values()).sort((a, b) => {
+    const existingOptions = Array.from(optionsMap.values()).sort((a, b) => {
       const aNum = Number(a.plotId);
       const bNum = Number(b.plotId);
 
@@ -458,14 +464,17 @@ export default function App() {
 
       return a.plotId.localeCompare(b.plotId);
     });
+
+    return [
+      {
+        plotId: NEXT_BUILD_OPTION_ID,
+        label: "Next personal plot / use current map selection",
+      },
+      ...existingOptions,
+    ];
   }, [hydratedPlots, wallet.address, reservedPlotId]);
 
   useEffect(() => {
-    if (reservedPlotId) {
-      setActiveBuildPlotId(reservedPlotId);
-      return;
-    }
-
     if (
       activeBuildPlotId &&
       buildPlotOptions.some((item) => item.plotId === activeBuildPlotId)
@@ -473,15 +482,16 @@ export default function App() {
       return;
     }
 
-    setActiveBuildPlotId(buildPlotOptions[0]?.plotId || "");
-  }, [reservedPlotId, buildPlotOptions, activeBuildPlotId]);
+    setActiveBuildPlotId(NEXT_BUILD_OPTION_ID);
+  }, [buildPlotOptions, activeBuildPlotId]);
 
   const activePlotId = useMemo(() => {
-    if (activeBuildPlotId) return activeBuildPlotId;
-    if (reservedPlotId) return reservedPlotId;
-    if (selectedPlot?.plotId) return selectedPlot.plotId;
+    if (isExistingBuildPlotId(activeBuildPlotId)) {
+      return activeBuildPlotId;
+    }
+
     return null;
-  }, [activeBuildPlotId, reservedPlotId, selectedPlot]);
+  }, [activeBuildPlotId]);
 
   const activeBuildPlot = useMemo(() => {
     if (!activePlotId) return null;
@@ -496,6 +506,9 @@ export default function App() {
     selectedQubiqCell,
     retryCount
   );
+
+  const buildMode = isExistingBuildPlotId(activeBuildPlotId) ? "existing" : "next";
+  const buildTargetPlot = activeBuildPlot ?? selectedPlot;
 
   useEffect(() => {
     let cancelled = false;
@@ -515,7 +528,7 @@ export default function App() {
         setCityConfigSnapshot(snapshot);
 
         const evaluated = evaluateResourceEligibility(
-          activeBuildPlot || selectedPlot,
+          buildTargetPlot,
           balances,
           snapshot,
           livePlotProgress.qubiq
@@ -539,8 +552,7 @@ export default function App() {
   }, [
     wallet.isConnected,
     wallet.address,
-    activeBuildPlot,
-    selectedPlot,
+    buildTargetPlot,
     livePlotProgress.qubiq,
     retryCount,
   ]);
@@ -556,22 +568,21 @@ export default function App() {
     });
   }, [hydratedPlots, searchTerm, availabilityFilter, specialFilter, favoriteIds]);
 
-  const effectiveSelectedPlot = activeBuildPlot || selectedPlot;
-
   const eligibility = useMemo(() => {
-    return getPlotEligibility(effectiveSelectedPlot, wallet, resourceEligibility);
-  }, [effectiveSelectedPlot, wallet, resourceEligibility]);
+    return getPlotEligibility(buildTargetPlot, wallet, resourceEligibility);
+  }, [buildTargetPlot, wallet, resourceEligibility]);
 
   const flowTargetPlotId = useMemo(() => {
-    const candidate = activeBuildPlotId || reservedPlotId || "";
-    if (!candidate) return null;
+    if (!isExistingBuildPlotId(activeBuildPlotId)) {
+      return null;
+    }
 
     try {
-      return BigInt(candidate);
+      return BigInt(activeBuildPlotId);
     } catch {
       return null;
     }
-  }, [activeBuildPlotId, reservedPlotId]);
+  }, [activeBuildPlotId]);
 
   useEffect(() => {
     if (!selectedPlot) return;
@@ -673,10 +684,14 @@ export default function App() {
     };
   }, [dashboard]);
 
-  const selectedPlotSummary = effectiveSelectedPlot?.label || "No plot selected";
-  const selectedFactionSummary = effectiveSelectedPlot
-    ? `${effectiveSelectedPlot.faction} · ${effectiveSelectedPlot.side}`
+  const selectedPlotSummary = selectedPlot?.label || "No plot selected";
+  const selectedFactionSummary = selectedPlot
+    ? `${selectedPlot.faction} · ${selectedPlot.side}`
     : "—";
+  const buildTargetSummary =
+    buildMode === "existing"
+      ? buildTargetPlot?.label || activeBuildPlotId || "—"
+      : "next personal plot";
 
   async function handlePrepareQubiqContribution(): Promise<void> {
     if (!wallet.address) {
@@ -700,7 +715,7 @@ export default function App() {
         desiredFaction:
           wallet.chosenFaction && wallet.chosenFaction !== "none"
             ? wallet.chosenFaction
-            : effectiveSelectedPlot?.faction === "inphinity"
+            : buildTargetPlot?.faction === "inphinity"
             ? "inphinity"
             : "inpinity",
         qubiqX: selectedQubiqCell.x,
@@ -801,8 +816,8 @@ export default function App() {
             </strong>
           </div>
           <div className="card">
-            <div className="muted">Active Build Plot</div>
-            <strong>{activeBuildPlotId || reservedPlotId || "—"}</strong>
+            <div className="muted">Build Target</div>
+            <strong>{buildTargetSummary}</strong>
           </div>
           <div className="card">
             <div className="muted">Flow</div>
@@ -973,13 +988,14 @@ export default function App() {
 
           <aside className="cityMapSidebar">
             <PlotDetails
-              plot={effectiveSelectedPlot}
+              plot={selectedPlot}
               onToggleFavorite={handleToggleFavorite}
               showAdvanced={showAdvanced}
             />
 
             <MintPreparationPanel
-              plot={effectiveSelectedPlot}
+              plot={buildTargetPlot}
+              viewedPlot={selectedPlot}
               wallet={wallet}
               eligibility={eligibility}
               resourceEligibility={resourceEligibility}
@@ -1003,6 +1019,7 @@ export default function App() {
               buildPlotOptions={buildPlotOptions}
               activeBuildPlotId={activeBuildPlotId}
               onSelectActiveBuildPlotId={setActiveBuildPlotId}
+              buildMode={buildMode}
               showAdvanced={showAdvanced}
             />
           </aside>

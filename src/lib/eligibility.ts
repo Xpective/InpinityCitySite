@@ -28,6 +28,19 @@ export type PlotEligibility = {
 
 const BASE_CHAIN_ID = 8453;
 
+function normalizeAddress(value?: string | null): string {
+  return (value || "").trim().toLowerCase();
+}
+
+function isPlotStarted(plot: InfinityPlot): boolean {
+  return plot.status === "reserved" || plot.status === "owned";
+}
+
+function isPlotOwnedByWallet(plot: InfinityPlot, wallet: WalletState): boolean {
+  if (!plot.owner || !wallet.address) return false;
+  return normalizeAddress(plot.owner) === normalizeAddress(wallet.address);
+}
+
 function getPlotFactionAllowed(plot: InfinityPlot, wallet: WalletState): boolean {
   if (!plot.policy.isPersonal) return false;
 
@@ -89,6 +102,11 @@ export function getPlotEligibility(
         },
         { key: "faction", label: "Faction compatible", passed: false },
         {
+          key: "ownership",
+          label: "Started plot belongs to wallet",
+          passed: false,
+        },
+        {
           key: "qubiq-resources",
           label: "Enough resources for next Qubiq",
           passed: false,
@@ -108,8 +126,10 @@ export function getPlotEligibility(
   const plotKindAllowed = isPersonal && !isCommunity && !isBorderline && !isNexus;
 
   const isFreePlot = plot.status === "free";
-  const isStartedPlot = plot.status === "reserved" || plot.status === "owned";
-  const statusAllowed = isFreePlot || (plotKindAllowed && isStartedPlot);
+  const isStartedPlot = isPlotStarted(plot);
+  const ownedByWallet = isPlotOwnedByWallet(plot, wallet);
+  const startedPlotOwnedByWallet = isStartedPlot && ownedByWallet;
+  const statusAllowed = isFreePlot || (plotKindAllowed && startedPlotOwnedByWallet);
 
   const sharedZoneBlocked = !plot.policy.sharedUse;
   const factionMatchAllowed = getPlotFactionAllowed(plot, wallet);
@@ -144,6 +164,12 @@ export function getPlotEligibility(
     );
   }
 
+  if (isStartedPlot && !ownedByWallet) {
+    reasons.push(
+      "This started plot belongs to another wallet. You can inspect it, but you cannot continue its private build flow."
+    );
+  }
+
   if (!statusAllowed) {
     reasons.push(`This plot is not currently buildable. Current status: ${plot.status}.`);
   }
@@ -163,7 +189,7 @@ export function getPlotEligibility(
     reasons.push(factionReason);
   }
 
-  if (isStartedPlot) {
+  if (startedPlotOwnedByWallet) {
     if (!resourceEligibility) {
       reasons.push("Qubiq cost check not loaded yet.");
     } else if (!resourcesReady) {
@@ -212,11 +238,16 @@ export function getPlotEligibility(
         label: "Plot buildable now",
         passed: statusAllowed,
       },
+      {
+        key: "ownership",
+        label: "Started plot belongs to wallet",
+        passed: !isStartedPlot || ownedByWallet,
+      },
       { key: "faction", label: "Faction compatible", passed: factionAllowed },
       {
         key: "qubiq-resources",
         label: "Enough resources for next Qubiq",
-        passed: resourcesReady,
+        passed: isStartedPlot ? resourcesReady : true,
       },
       { key: "qubiq-live", label: "Qubiq completion live", passed: true },
     ],
