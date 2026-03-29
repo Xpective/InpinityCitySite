@@ -1,0 +1,275 @@
+:root {
+  --city-theme-bg: #060b16;
+  --city-theme-panel: rgba(10, 16, 34, 0.78);
+  --city-theme-panel-border: rgba(255, 224, 165, 0.16);
+  --city-theme-panel-shadow: 0 18px 54px rgba(0, 0, 0, 0.28);
+  --city-theme-gold: #f5c46e;
+  --city-theme-blue: #7cbcff;
+  --city-theme-soft: rgba(238, 242, 255, 0.78);
+}
+
+.page.cityEternityTheme {
+  position: relative;
+  width: min(1480px, calc(100% - 24px));
+  padding-top: 18px;
+  isolation: isolate;
+}
+
+.page.cityEternityTheme::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 221, 160, 0.08), transparent 28%),
+    radial-gradient(circle at 0% 15%, rgba(255, 170, 100, 0.08), transparent 24%),
+    radial-gradient(circle at 100% 15%, rgba(115, 178, 255, 0.09), transparent 26%),
+    linear-gradient(180deg, rgba(5, 8, 20, 0.68), rgba(5, 8, 20, 0.82)),
+    url("../assets/eternity/hero-bg.webp") center top / cover no-repeat;
+  opacity: 0.92;
+}
+
+.page.cityEternityTheme::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(7, 11, 22, 0.08), rgba(7, 11, 22, 0.3));
+}
+
+.topBannerStrip,
+.bottomFooterStrip {
+  width: 100%;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 46px rgba(0, 0, 0, 0.24);
+}
+
+.topBannerStrip {
+  height: clamp(136px, 17vw, 220px);
+  margin-bottom: 18px;
+  background:
+    linear-gradient(180deg, rgba(6, 10, 22, 0.12), rgba(6, 10, 22, 0.44)),
+    url("../assets/eternity/header-banner.webp") center center / cover no-repeat;
+}
+
+.bottomFooterStrip {
+  height: clamp(150px, 18vw, 240px);
+  margin-top: 14px;
+  background:
+    linear-gradient(180deg, rgba(6, 10, 22, 0.16), rgba(6, 10, 22, 0.56)),
+    url("../assets/eternity/footer-banner.webp") center center / cover no-repeat;
+}
+
+.panel.themedPanel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid var(--city-theme-panel-border);
+  background:
+    linear-gradient(180deg, rgba(17, 27, 55, 0.78), rgba(8, 13, 28, 0.9));
+  box-shadow: var(--city-theme-panel-shadow);
+}
+
+.panel.themedPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.95;
+  background:
+    url("../assets/ui/panel-corner-gold.webp") top left / 92px 92px no-repeat,
+    url("../assets/ui/panel-corner-gold.webp") bottom right / 92px 92px no-repeat,
+    url("../assets/ui/panel-frame-top.webp") top center / 100% 72px no-repeat,
+    url("../assets/ui/panel-frame-bottom.webp") bottom center / 100% 72px no-repeat;
+}
+
+.panel.themedPanel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.cityHeroPanel {
+  background:
+    linear-gradient(180deg, rgba(5, 8, 20, 0.2), rgba(5, 8, 20, 0.64)),
+    url("../assets/eternity/hero-bg.webp") center center / cover no-repeat,
+    linear-gradient(180deg, rgba(17, 27, 55, 0.82), rgba(8, 13, 28, 0.92));
+}
+
+.cityHeroPanel .eyebrow {
+  color: rgba(255, 222, 155, 0.96);
+}
+
+.cityHeroPanel h1,
+.cityEternityTheme h2,
+.cityEternityTheme h3,
+.cityEternityTheme h4 {
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.24);
+}
+
+.cityEternityTheme .subtitle,
+.cityEternityTheme .sectionHelp,
+.cityEternityTheme .heroTip,
+.cityEternityTheme .muted {
+  color: var(--city-theme-soft);
+}
+
+.sectionWithDivider {
+  position: relative;
+  margin-bottom: 40px;
+}
+
+.sectionWithDivider::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: -28px;
+  height: 72px;
+  pointer-events: none;
+  opacity: 0.72;
+  background: url("../assets/eternity/section-bar.webp") center center / cover no-repeat;
+}
+
+.cityEternityTheme .card,
+.cityEternityTheme .advancedInfoCard,
+.cityEternityTheme .detailsCard,
+.cityEternityTheme .infoNote,
+.cityEternityTheme .detailSection,
+.cityEternityTheme .toolbarMatches,
+.cityEternityTheme .toolbarQuickMatches,
+.cityEternityTheme .inspectorControls,
+.cityEternityTheme .inspectorResultCard,
+.cityEternityTheme .inspectorFieldCard,
+.cityEternityTheme .mapLegend,
+.cityEternityTheme .mapMetaNote,
+.cityEternityTheme .toolbarDetails,
+.cityEternityTheme .panelHint {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.18);
+}
+
+.cityEternityTheme .toolbarButton {
+  background: linear-gradient(180deg, rgba(34, 46, 82, 0.88), rgba(15, 23, 44, 0.94));
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.cityEternityTheme .toolbarButton:hover {
+  background: linear-gradient(180deg, rgba(43, 58, 103, 0.92), rgba(18, 28, 54, 0.96));
+  border-color: rgba(245, 196, 110, 0.3);
+}
+
+.cityEternityTheme .toolbarButton.active {
+  background:
+    linear-gradient(180deg, rgba(60, 80, 142, 0.95), rgba(22, 32, 63, 0.96));
+  border-color: rgba(124, 188, 255, 0.34);
+}
+
+.cityEternityTheme .toolbarInput,
+.cityEternityTheme select,
+.cityEternityTheme input,
+.cityEternityTheme textarea {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.cityEternityTheme .mapWrap {
+  border-radius: 22px;
+  border-color: rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(7, 12, 24, 0.18), rgba(7, 12, 24, 0.62)),
+    url("../assets/eternity/nexus-glow.webp") center 58% / 420px auto no-repeat,
+    url("../assets/eternity/faction-left-glow.webp") left 52% / 34% auto no-repeat,
+    url("../assets/eternity/faction-right-glow.webp") right 52% / 34% auto no-repeat,
+    url("../assets/eternity/map-bg.webp") center center / cover no-repeat,
+    linear-gradient(180deg, rgba(8, 13, 24, 0.98), rgba(6, 10, 20, 0.98));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+.cityEternityTheme .mapUtilityBar {
+  background: rgba(9, 14, 28, 0.82);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.cityEternityTheme .mapFilterBar {
+  background: rgba(9, 14, 28, 0.5);
+}
+
+.cityEternityTheme .citySvg {
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.2));
+}
+
+.cityEternityTheme .cards .card strong,
+.cityEternityTheme .detailsCard strong,
+.cityEternityTheme .advancedInfoCard strong {
+  color: #ffffff;
+}
+
+.cityEternityTheme .warningBanner {
+  background: rgba(255, 112, 112, 0.12);
+  border-color: rgba(255, 112, 112, 0.28);
+}
+
+.cityEternityTheme .miniBarFill {
+  background: linear-gradient(90deg, rgba(245, 196, 110, 0.98), rgba(124, 188, 255, 0.96));
+}
+
+@media (max-width: 980px) {
+  .sectionWithDivider::after {
+    left: 12px;
+    right: 12px;
+    bottom: -24px;
+    height: 58px;
+  }
+
+  .topBannerStrip {
+    height: clamp(110px, 22vw, 160px);
+  }
+
+  .bottomFooterStrip {
+    height: clamp(120px, 24vw, 170px);
+  }
+}
+
+@media (max-width: 700px) {
+  .page.cityEternityTheme {
+    width: min(100% - 12px, 100%);
+    padding-top: 10px;
+  }
+
+  .topBannerStrip {
+    margin-bottom: 14px;
+    border-radius: 18px;
+  }
+
+  .bottomFooterStrip {
+    border-radius: 18px;
+  }
+
+  .panel.themedPanel {
+    border-radius: 18px;
+  }
+
+  .panel.themedPanel::before {
+    background:
+      url("../assets/ui/panel-corner-gold.webp") top left / 68px 68px no-repeat,
+      url("../assets/ui/panel-corner-gold.webp") bottom right / 68px 68px no-repeat,
+      url("../assets/ui/panel-frame-top.webp") top center / 100% 58px no-repeat,
+      url("../assets/ui/panel-frame-bottom.webp") bottom center / 100% 58px no-repeat;
+  }
+
+  .cityEternityTheme .mapWrap {
+    background:
+      linear-gradient(180deg, rgba(7, 12, 24, 0.22), rgba(7, 12, 24, 0.68)),
+      url("../assets/eternity/nexus-glow.webp") center 58% / 280px auto no-repeat,
+      url("../assets/eternity/faction-left-glow.webp") left 56% / 42% auto no-repeat,
+      url("../assets/eternity/faction-right-glow.webp") right 56% / 42% auto no-repeat,
+      url("../assets/eternity/map-bg.webp") center center / cover no-repeat,
+      linear-gradient(180deg, rgba(8, 13, 24, 0.98), rgba(6, 10, 20, 0.98));
+  }
+}

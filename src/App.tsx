@@ -47,6 +47,7 @@ import type { DashboardQueryResult } from "./types/city";
 import type { InfinityPlot } from "./types/infinity";
 
 import "./styles/global.css";
+import "./styles/eternity-theme.css";
 
 type AvailabilityFilter = "all" | "free" | "reserved" | "owned" | "locked";
 type SpecialFilter =
@@ -830,8 +831,10 @@ export default function App() {
   }
 
   return (
-    <div className="page">
-      <section className="hero panel">
+    <div className="page cityEternityTheme">
+      <div className="topBannerStrip" aria-hidden="true" />
+
+      <section className="hero panel themedPanel cityHeroPanel">
         <div className="eyebrow">INPINITY CITY</div>
         <h1>Reserve your Qubiq</h1>
         <p className="subtitle">
@@ -945,7 +948,7 @@ export default function App() {
       </section>
 
       {showAdvanced && (
-        <section className="panel">
+        <section className="panel themedPanel sectionWithDivider">
           <h2>City Dashboard</h2>
 
           <ErrorBoundary
@@ -1003,7 +1006,7 @@ export default function App() {
         </section>
       )}
 
-      <section className="panel">
+      <section className="panel themedPanel sectionWithDivider">
         <h2>Infinity City Map</h2>
         <p className="sectionHelp">
           Map first, rarity and city stats second, build details afterwards. Advanced
@@ -1115,7 +1118,7 @@ export default function App() {
       )}
 
       {showAdvanced && (
-        <section className="panel panelHint">
+        <section className="panel panelHint themedPanel">
           <h2>Implementation Notes</h2>
           <p>
             Personal plot numbering now starts on the Inpinity side and live personal
@@ -1129,6 +1132,8 @@ export default function App() {
           </p>
         </section>
       )}
+
+      <div className="bottomFooterStrip" aria-hidden="true" />
     </div>
   );
 }
