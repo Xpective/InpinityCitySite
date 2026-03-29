@@ -82,7 +82,7 @@
   opacity: 0.95;
   background:
     url("../assets/ui/panel-corner-gold.webp") top left / 92px 92px no-repeat,
-    url("../assets/ui/panel-corner-gold.webp") bottom right / 92px 92px no-repeat,
+    url("../assets/ui/bpanel-corner-gold.webp") bottom right / 92px 92px no-repeat,
     url("../assets/ui/panel-frame-top.webp") top center / 100% 72px no-repeat,
     url("../assets/ui/panel-frame-bottom.webp") bottom center / 100% 72px no-repeat;
 }
@@ -258,7 +258,7 @@
   .panel.themedPanel::before {
     background:
       url("../assets/ui/panel-corner-gold.webp") top left / 68px 68px no-repeat,
-      url("../assets/ui/panel-corner-gold.webp") bottom right / 68px 68px no-repeat,
+      url("../assets/ui/bpanel-corner-gold.webp") bottom right / 68px 68px no-repeat,
       url("../assets/ui/panel-frame-top.webp") top center / 100% 58px no-repeat,
       url("../assets/ui/panel-frame-bottom.webp") bottom center / 100% 58px no-repeat;
   }
