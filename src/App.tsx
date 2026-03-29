@@ -832,6 +832,28 @@ export default function App() {
 
   return (
     <div className="page cityEternityTheme">
+      <header className="siteHeaderShell" aria-label="Inpinity network navigation">
+        <a className="siteBrandLink" href="https://inpinity.online/" aria-label="Open Inpinity home">
+          <span className="siteBrandMark">∞</span>
+          <span className="siteBrandCopy">
+            <strong>Inpinity</strong>
+            <span>City Interface</span>
+          </span>
+        </a>
+
+        <nav className="siteExternalNav">
+          <a className="toolbarButton siteExternalLink" href="https://inpinity.online/">
+            Home
+          </a>
+          <a className="toolbarButton siteExternalLink" href="https://inpinity.online/game">
+            Game
+          </a>
+          <a className="toolbarButton siteExternalLink" href="https://inpinity.online/map">
+            Map
+          </a>
+        </nav>
+      </header>
+
       <div className="topBannerStrip" aria-hidden="true" />
 
       <section className="hero panel themedPanel cityHeroPanel">

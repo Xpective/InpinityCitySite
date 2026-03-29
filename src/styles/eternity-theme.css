@@ -273,3 +273,111 @@
       linear-gradient(180deg, rgba(8, 13, 24, 0.98), rgba(6, 10, 20, 0.98));
   }
 }
+
+
+.siteHeaderShell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(17, 27, 55, 0.72), rgba(8, 13, 28, 0.82));
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(10px);
+}
+
+.siteBrandLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffffff;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.siteBrandMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 196, 110, 0.28);
+  background: radial-gradient(circle at center, rgba(245, 196, 110, 0.24), rgba(124, 188, 255, 0.08));
+  color: var(--city-theme-gold);
+  font-size: 24px;
+  line-height: 1;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.siteBrandCopy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.siteBrandCopy strong {
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.siteBrandCopy span {
+  color: var(--city-theme-soft);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.siteExternalNav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.siteExternalLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  color: #eff6ff;
+  text-decoration: none;
+}
+
+.siteExternalLink:hover {
+  color: #ffffff;
+}
+
+
+@media (max-width: 820px) {
+  .siteHeaderShell {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 14px;
+  }
+
+  .siteExternalNav {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .siteExternalNav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .siteExternalLink {
+    width: 100%;
+    padding: 0 10px;
+  }
+}
