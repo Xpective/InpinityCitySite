@@ -832,27 +832,19 @@ export default function App() {
 
   return (
     <div className="page cityEternityTheme">
-      <header className="siteHeaderShell" aria-label="Inpinity network navigation">
-        <a className="siteBrandLink" href="https://inpinity.online/" aria-label="Open Inpinity home">
-          <span className="siteBrandMark">∞</span>
-          <span className="siteBrandCopy">
-            <strong>Inpinity</strong>
-            <span>City Interface</span>
-          </span>
+      <nav className="siteNavBar" aria-label="Primary">
+        <a className="siteNavBrand" href="https://inpinity.online/">
+          <span className="siteNavBrandGlow" aria-hidden="true" />
+          <span className="siteNavBrandLabel">Inpinity</span>
+          <span className="siteNavBrandSub">City</span>
         </a>
 
-        <nav className="siteExternalNav">
-          <a className="toolbarButton siteExternalLink" href="https://inpinity.online/">
-            Home
-          </a>
-          <a className="toolbarButton siteExternalLink" href="https://inpinity.online/game">
-            Game
-          </a>
-          <a className="toolbarButton siteExternalLink" href="https://inpinity.online/map">
-            Map
-          </a>
-        </nav>
-      </header>
+        <div className="siteNavLinks">
+          <a className="siteNavLink" href="https://inpinity.online/">Home</a>
+          <a className="siteNavLink" href="https://inpinity.online/game">Game</a>
+          <a className="siteNavLink isActive" href="https://inpinity.online/map" aria-current="page">Map</a>
+        </div>
+      </nav>
 
       <div className="topBannerStrip" aria-hidden="true" />
 
@@ -886,6 +878,12 @@ export default function App() {
               Connect Wallet
             </button>
           )}
+
+          <div className="heroExternalLinks" aria-label="Inpinity links">
+            <a className="heroExternalLink" href="https://inpinity.online/">Home</a>
+            <a className="heroExternalLink" href="https://inpinity.online/game">Game</a>
+            <a className="heroExternalLink isActive" href="https://inpinity.online/map" aria-current="page">Map</a>
+          </div>
 
           <div className="heroTip">
             Mobile keeps the map first, stats second and the build terminal below.
