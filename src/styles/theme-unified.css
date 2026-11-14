@@ -1,0 +1,510 @@
+/* ============================================================
+   INPINITY UNIFIED THEME v1
+   Ersetzt die visuelle Sprache von global.css
+   Ziel: city.inpinity.online · inpinity.online · phircle = EIN Look
+   ============================================================ */
+
+:root {
+  /* === COLORS === */
+  --color-bg: #000000;
+  --color-bg-soft: #080810;
+  --color-bg-card: rgba(8, 8, 16, 0.92);
+  --color-bg-elevated: rgba(8, 8, 16, 0.98);
+  --color-bg-glass: rgba(8, 8, 16, 0.72);
+
+  --color-primary: #ffcc00;
+  --color-primary-dim: #ffaa00;
+  --color-primary-deep: #cc8800;
+  --color-primary-glow: rgba(255, 204, 0, 0.35);
+
+  --color-success: #00ff88;
+  --color-success-dim: #00aa55;
+  --color-info: #00e5ff;
+  --color-info-dim: #0099aa;
+  --color-warning: #ff8800;
+  --color-danger: #ff3333;
+  --color-danger-dim: #cc0000;
+  --color-partner: #c060ff;
+
+  --color-text: #e0e0e0;
+  --color-text-dim: #888888;
+  --color-text-faint: #666666;
+  --color-text-ghost: #444444;
+
+  --color-border: #333333;
+  --color-border-soft: #1a1a1a;
+  --color-border-bright: #444444;
+
+  /* === RARITY === */
+  --rarity-bronze: #cd7f32;
+  --rarity-silver: #c0c0c0;
+  --rarity-gold: #ffcc00;
+  --rarity-platinum: #e5e4e2;
+  --rarity-diamond: #b9f2ff;
+
+  /* === TYPOGRAPHY === */
+  --font-mono: 'Courier New', 'Courier', monospace;
+  --font-display: 'Courier New', monospace;
+
+  /* === SPACING === */
+  --sp-1: 4px;
+  --sp-2: 6px;
+  --sp-3: 8px;
+  --sp-4: 12px;
+  --sp-5: 16px;
+  --sp-6: 20px;
+  --sp-7: 24px;
+  --sp-8: 32px;
+  --sp-9: 48px;
+
+  /* === RADIUS === */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 12px;
+  --radius-2xl: 18px;
+  --radius-pill: 999px;
+
+  /* === SHADOWS === */
+  --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 15px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.6);
+  --shadow-glow-primary: 0 0 25px rgba(255, 204, 0, 0.35);
+  --shadow-glow-primary-strong: 0 0 40px rgba(255, 204, 0, 0.55);
+  --shadow-glow-success: 0 0 25px rgba(0, 255, 136, 0.35);
+  --shadow-glow-info: 0 0 25px rgba(0, 229, 255, 0.35);
+  --shadow-glow-danger: 0 0 25px rgba(255, 51, 51, 0.4);
+
+  /* === TRANSITIONS === */
+  --tr-fast: 0.15s ease;
+  --tr-base: 0.2s ease;
+  --tr-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --tr-bounce: 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+
+  /* === Z-INDEX === */
+  --z-base: 10;
+  --z-prominent: 12;
+  --z-hud: 15;
+  --z-sidebar: 20;
+  --z-tooltip: 50;
+  --z-toast: 100;
+  --z-modal: 150;
+  --z-modal-top: 180;
+  --z-tutorial: 200;
+  --z-loading: 300;
+}
+
+/* ============================================================
+   GLOBAL BASE
+   ============================================================ */
+.inpinity-theme,
+.inpinity-theme * {
+  font-family: var(--font-mono);
+}
+
+.inpinity-theme {
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.inpinity-theme *,
+.inpinity-theme *::before,
+.inpinity-theme *::after {
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.ip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-5);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dim));
+  color: #000;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all var(--tr-base);
+  text-decoration: none;
+  user-select: none;
+}
+
+.ip-btn:hover {
+  box-shadow: var(--shadow-glow-primary);
+  transform: translateY(-1px);
+}
+
+.ip-btn:active {
+  transform: translateY(0);
+}
+
+.ip-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.ip-btn--success {
+  background: linear-gradient(135deg, var(--color-success), var(--color-success-dim));
+  color: #000;
+}
+
+.ip-btn--danger {
+  background: linear-gradient(135deg, var(--color-danger), var(--color-danger-dim));
+  color: #fff;
+}
+
+.ip-btn--ghost {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.ip-btn--ghost:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.ip-btn--lg {
+  padding: var(--sp-5) var(--sp-7);
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+
+.ip-btn--sm {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 10px;
+}
+
+.ip-btn--icon {
+  padding: var(--sp-2) var(--sp-3);
+  min-width: 32px;
+}
+
+/* ============================================================
+   CARDS / PANELS
+   ============================================================ */
+.ip-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--sp-5);
+  backdrop-filter: blur(6px);
+}
+
+.ip-card--soft {
+  border-color: var(--color-border);
+  background: rgba(8, 8, 16, 0.85);
+}
+
+.ip-card--glass {
+  border-color: var(--color-border);
+  background: var(--color-bg-glass);
+  backdrop-filter: blur(12px);
+}
+
+.ip-card--success {
+  border-color: var(--color-success);
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.ip-card--warning {
+  border-color: var(--color-warning);
+  background: rgba(255, 136, 0, 0.05);
+}
+
+.ip-card--danger {
+  border-color: var(--color-danger);
+  background: rgba(255, 51, 51, 0.05);
+}
+
+.ip-card__title {
+  color: var(--color-primary);
+  font-size: 14px;
+  letter-spacing: 2px;
+  margin: 0 0 var(--sp-4);
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   INFO ROWS
+   ============================================================ */
+.ip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--color-border-soft);
+  font-size: 12px;
+}
+
+.ip-row:last-child {
+  border-bottom: none;
+}
+
+.ip-row__label {
+  color: var(--color-text-dim);
+}
+
+.ip-row__value {
+  color: var(--color-text);
+  font-weight: bold;
+}
+
+.ip-row__value--gold {
+  color: var(--color-primary);
+}
+.ip-row__value--success {
+  color: var(--color-success);
+}
+.ip-row__value--info {
+  color: var(--color-info);
+}
+.ip-row__value--warning {
+  color: var(--color-warning);
+}
+.ip-row__value--danger {
+  color: var(--color-danger);
+}
+
+/* ============================================================
+   LABELS / CHIPS
+   ============================================================ */
+.ip-label {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.ip-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--color-text-dim);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--tr-base);
+  font-family: var(--font-mono);
+}
+
+.ip-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.ip-chip--active {
+  background: var(--color-primary);
+  color: #000;
+  border-color: var(--color-primary);
+  font-weight: bold;
+}
+
+.ip-chip--success {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.ip-chip--warning {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.ip-chip--danger {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+/* ============================================================
+   PROGRESS
+   ============================================================ */
+.ip-progress {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.ip-progress__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dim));
+  border-radius: var(--radius-sm);
+  transition: width var(--tr-slow);
+}
+
+.ip-progress--success .ip-progress__fill {
+  background: linear-gradient(90deg, var(--color-success), var(--color-success-dim));
+}
+
+.ip-progress--warning .ip-progress__fill {
+  background: linear-gradient(90deg, var(--color-warning), #cc6600);
+}
+
+/* ============================================================
+   RARITY
+   ============================================================ */
+.ip-rarity-bar {
+  height: 4px;
+  border-radius: 2px;
+  margin: var(--sp-3) 0;
+}
+
+.ip-rarity--bronze {
+  background: var(--rarity-bronze);
+}
+.ip-rarity--silver {
+  background: var(--rarity-silver);
+}
+.ip-rarity--gold {
+  background: var(--rarity-gold);
+}
+.ip-rarity--platinum {
+  background: var(--rarity-platinum);
+}
+.ip-rarity--diamond {
+  background: var(--rarity-diamond);
+}
+
+/* ============================================================
+   TOASTS
+   ============================================================ */
+.ip-toast {
+  background: var(--color-bg-elevated);
+  border-left: 4px solid var(--color-primary);
+  padding: var(--sp-4) var(--sp-6);
+  border-radius: var(--radius-lg);
+  font-size: 12px;
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+  animation: ip-toast-in 0.3s ease;
+  max-width: 400px;
+}
+
+.ip-toast--success {
+  border-color: var(--color-success);
+}
+.ip-toast--error {
+  border-color: var(--color-danger);
+}
+.ip-toast--info {
+  border-color: var(--color-info);
+}
+
+@keyframes ip-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes ip-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes ip-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(255, 204, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 204, 0, 0.6);
+  }
+}
+
+@keyframes ip-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ip-bounce-in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.ip-pulse {
+  animation: ip-pulse 2s ease-in-out infinite;
+}
+.ip-glow {
+  animation: ip-glow 2s ease-in-out infinite;
+}
+
+/* ============================================================
+   ACCESSIBILITY
+   ============================================================ */
+.inpinity-theme button:focus-visible,
+.inpinity-theme input:focus-visible,
+.inpinity-theme select:focus-visible,
+.inpinity-theme a:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inpinity-theme *,
+  .inpinity-theme *::before,
+  .inpinity-theme *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  :root {
+    --sp-8: 24px;
+    --sp-9: 32px;
+  }
+  .ip-card {
+    padding: var(--sp-4);
+  }
+  .ip-btn {
+    padding: var(--sp-3) var(--sp-4);
+  }
+  .ip-btn--lg {
+    padding: var(--sp-4) var(--sp-5);
+    font-size: 12px;
+  }
+}
