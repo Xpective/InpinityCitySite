@@ -12599,6 +12599,62 @@ export type CityDashboardQuery = {
   }>;
 };
 
+export type CityActivityQueryVariables = Exact<{
+  first?: InputMaybe<Scalars["Int"]["input"]>;
+}>;
+
+export type CityActivityQuery = {
+  __typename?: "Query";
+  qubiqContributions: Array<{
+    __typename?: "QubiqContribution";
+    id: string;
+    x: number;
+    y: number;
+    contributor: string;
+    oil: string;
+    lemons: string;
+    iron: string;
+    blockNumber: string;
+    timestamp: string;
+    txHash: string;
+    plot: { __typename?: "Plot"; id: string; plotId: string };
+  }>;
+  plotCompletions: Array<{
+    __typename?: "PlotCompletion";
+    id: string;
+    blockNumber: string;
+    timestamp: string;
+    txHash: string;
+    plot: { __typename?: "Plot"; id: string; plotId: string };
+  }>;
+  transferEvents: Array<{
+    __typename?: "TransferEvent";
+    id: string;
+    from: string;
+    to: string;
+    tokenId: string;
+    blockNumber: string;
+    timestamp: string;
+    txHash: string;
+  }>;
+};
+
+export type HealthCheckQueryVariables = Exact<{ [key: string]: never }>;
+
+export type HealthCheckQuery = {
+  __typename?: "Query";
+  _meta?: {
+    __typename?: "_Meta_";
+    block: {
+      __typename?: "_Block_";
+      number: number;
+      timestamp?: number | null;
+    };
+  } | null;
+  plots: Array<{ __typename?: "Plot"; id: string }>;
+  players: Array<{ __typename?: "Player"; id: string }>;
+};
+
 export type GetPlotsPaginatedQueryVariables = Exact<{
   first: Scalars["Int"]["input"];
   skip: Scalars["Int"]["input"];
@@ -13415,6 +13471,243 @@ export const CityDashboardDocument = {
     },
   ],
 } as unknown as DocumentNode<CityDashboardQuery, CityDashboardQueryVariables>;
+export const CityActivityDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "CityActivity" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "first" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          defaultValue: { kind: "IntValue", value: "20" },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "qubiqContributions" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: { kind: "EnumValue", value: "timestamp" },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderDirection" },
+                value: { kind: "EnumValue", value: "desc" },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "plot" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "plotId" },
+                      },
+                    ],
+                  },
+                },
+                { kind: "Field", name: { kind: "Name", value: "x" } },
+                { kind: "Field", name: { kind: "Name", value: "y" } },
+                { kind: "Field", name: { kind: "Name", value: "contributor" } },
+                { kind: "Field", name: { kind: "Name", value: "oil" } },
+                { kind: "Field", name: { kind: "Name", value: "lemons" } },
+                { kind: "Field", name: { kind: "Name", value: "iron" } },
+                { kind: "Field", name: { kind: "Name", value: "blockNumber" } },
+                { kind: "Field", name: { kind: "Name", value: "timestamp" } },
+                { kind: "Field", name: { kind: "Name", value: "txHash" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "plotCompletions" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: { kind: "EnumValue", value: "timestamp" },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderDirection" },
+                value: { kind: "EnumValue", value: "desc" },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "plot" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "plotId" },
+                      },
+                    ],
+                  },
+                },
+                { kind: "Field", name: { kind: "Name", value: "blockNumber" } },
+                { kind: "Field", name: { kind: "Name", value: "timestamp" } },
+                { kind: "Field", name: { kind: "Name", value: "txHash" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "transferEvents" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: { kind: "EnumValue", value: "timestamp" },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderDirection" },
+                value: { kind: "EnumValue", value: "desc" },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "from" } },
+                { kind: "Field", name: { kind: "Name", value: "to" } },
+                { kind: "Field", name: { kind: "Name", value: "tokenId" } },
+                { kind: "Field", name: { kind: "Name", value: "blockNumber" } },
+                { kind: "Field", name: { kind: "Name", value: "timestamp" } },
+                { kind: "Field", name: { kind: "Name", value: "txHash" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<CityActivityQuery, CityActivityQueryVariables>;
+export const HealthCheckDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "HealthCheck" },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "_meta" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "block" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "number" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "timestamp" },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "plots" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: { kind: "IntValue", value: "1" },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "players" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: { kind: "IntValue", value: "1" },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<HealthCheckQuery, HealthCheckQueryVariables>;
 export const GetPlotsPaginatedDocument = {
   kind: "Document",
   definitions: [

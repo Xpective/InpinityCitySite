@@ -8,6 +8,9 @@ import {
 import { CONFIG } from "./config";
 import { getInjectedEthereum, normalizeAddress } from "./evm-wallet";
 
+// ============================================================
+// TYPES
+// ============================================================
 export type QubiqReadState = {
   plotId: bigint;
   x: number;
@@ -55,6 +58,9 @@ type RawQubiq = {
   completedAt: bigint;
 };
 
+// ============================================================
+// ABIs
+// ============================================================
 const CITY_LAND_ABI = [
   "function getQubiq(uint256 plotId, uint32 x, uint32 y) view returns (tuple(uint256 oilDeposited,uint256 lemonsDeposited,uint256 ironDeposited,bool completed,bool usedAether,address lastContributor,uint64 completedAt))",
   "function contributeQubiq(uint256 plotId, uint32 x, uint32 y, uint256 oilAmount, uint256 lemonsAmount, uint256 ironAmount)",
@@ -72,9 +78,17 @@ const CITY_CONFIG_ABI = [
   "function getUintConfig(bytes32 key) view returns (uint256)",
 ] as const;
 
+// ============================================================
+// CONSTANTS
+// ============================================================
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const COST_CACHE_TTL_MS = 60_000;
+const RPC_RETRIES = 3;
+const RPC_RETRY_DELAY_MS = 800;
 
+// ============================================================
+// CACHE
+// ============================================================
 let cachedQubiqCosts:
   | {
       expiresAt: number;
@@ -82,33 +96,77 @@ let cachedQubiqCosts:
     }
   | null = null;
 
+/** Clear the Qubiq cost cache (useful after admin config changes) */
+export function clearQubiqCostCache(): void {
+  cachedQubiqCosts = null;
+}
+
+// ============================================================
+// DEBUG
+// ============================================================
+function isDebugEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return new URLSearchParams(window.location.search).has("debug");
+  } catch {
+    return false;
+  }
+}
+
+function logDebug(...args: unknown[]): void {
+  if (isDebugEnabled()) {
+    // eslint-disable-next-line no-console
+    console.debug("%c[city-land]", "color:#00e5ff", ...args);
+  }
+}
+
+// ============================================================
+// RETRY WRAPPER
+// ============================================================
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  label = "RPC call",
+  retries = RPC_RETRIES
+): Promise<T> {
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      logDebug(`${label} attempt ${attempt + 1} failed`, err);
+      if (attempt < retries - 1) {
+        await new Promise((r) => setTimeout(r, RPC_RETRY_DELAY_MS * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
+// ============================================================
+// PROVIDER / CONTRACT HELPERS
+// ============================================================
 function getProvider(): BrowserProvider {
   const ethereum = getInjectedEthereum();
-
   if (!ethereum) {
-    throw new Error("No injected wallet found.");
+    throw new Error("No injected wallet found. Please install MetaMask or another EVM wallet.");
   }
-
   return new BrowserProvider(ethereum);
 }
 
 export function getCityLandAddress(): string {
   const address = normalizeAddress(CONFIG.cityLandAddress);
-
   if (!address) {
-    throw new Error("Missing VITE_CITY_LAND_ADDRESS.");
+    throw new Error("Missing VITE_CITY_LAND_ADDRESS. Please check your environment config.");
   }
-
   return address;
 }
 
 export function getCityConfigAddress(): string {
   const address = normalizeAddress(CONFIG.cityConfigAddress);
-
   if (!address) {
-    throw new Error("Missing VITE_CITY_CONFIG_ADDRESS.");
+    throw new Error("Missing VITE_CITY_CONFIG_ADDRESS. Please check your environment config.");
   }
-
   return address;
 }
 
@@ -120,27 +178,36 @@ export function getCityConfigContract(providerOrSigner: BrowserProvider | Signer
   return new Contract(getCityConfigAddress(), CITY_CONFIG_ABI, providerOrSigner);
 }
 
+// ============================================================
+// QUBIQ COSTS
+// ============================================================
 async function loadQubiqCosts(): Promise<QubiqCosts> {
   const provider = getProvider();
   const config = getCityConfigContract(provider);
 
-  const [oilKey, lemonsKey, ironKey] = await Promise.all([
-    config.KEY_QUBIQ_OIL_COST() as Promise<string>,
-    config.KEY_QUBIQ_LEMONS_COST() as Promise<string>,
-    config.KEY_QUBIQ_IRON_COST() as Promise<string>,
-  ]);
+  const [oilKey, lemonsKey, ironKey] = await withRetry(
+    () =>
+      Promise.all([
+        config.KEY_QUBIQ_OIL_COST() as Promise<string>,
+        config.KEY_QUBIQ_LEMONS_COST() as Promise<string>,
+        config.KEY_QUBIQ_IRON_COST() as Promise<string>,
+      ]),
+    "read qubiq cost keys"
+  );
 
-  const [oilRequired, lemonsRequired, ironRequired] = await Promise.all([
-    config.getUintConfig(oilKey) as Promise<bigint>,
-    config.getUintConfig(lemonsKey) as Promise<bigint>,
-    config.getUintConfig(ironKey) as Promise<bigint>,
-  ]);
+  const [oilRequired, lemonsRequired, ironRequired] = await withRetry(
+    () =>
+      Promise.all([
+        config.getUintConfig(oilKey) as Promise<bigint>,
+        config.getUintConfig(lemonsKey) as Promise<bigint>,
+        config.getUintConfig(ironKey) as Promise<bigint>,
+      ]),
+    "read qubiq cost values"
+  );
 
-  return {
-    oilRequired,
-    lemonsRequired,
-    ironRequired,
-  };
+  logDebug("Loaded qubiq costs", { oilRequired, lemonsRequired, ironRequired });
+
+  return { oilRequired, lemonsRequired, ironRequired };
 }
 
 async function readQubiqCosts(force = false): Promise<QubiqCosts> {
@@ -163,6 +230,9 @@ async function readQubiqCosts(force = false): Promise<QubiqCosts> {
   return promise;
 }
 
+// ============================================================
+// HELPERS
+// ============================================================
 function clampBigintMinZero(value: bigint): bigint {
   return value < 0n ? 0n : value;
 }
@@ -210,9 +280,7 @@ function mapRawQubiqToReadState(
   costs: QubiqCosts
 ): QubiqReadState {
   const oilRemaining = clampBigintMinZero(costs.oilRequired - rawQubiq.oilDeposited);
-  const lemonsRemaining = clampBigintMinZero(
-    costs.lemonsRequired - rawQubiq.lemonsDeposited
-  );
+  const lemonsRemaining = clampBigintMinZero(costs.lemonsRequired - rawQubiq.lemonsDeposited);
   const ironRemaining = clampBigintMinZero(costs.ironRequired - rawQubiq.ironDeposited);
 
   const completionPercent = computeCompletionPercent(
@@ -250,14 +318,13 @@ function mapRawQubiqToReadState(
     lemonsRemaining,
     ironRemaining,
     completionPercent,
-    visualState: getVisualState(
-      rawQubiq.completed,
-      rawQubiq.usedAether,
-      completionPercent
-    ),
+    visualState: getVisualState(rawQubiq.completed, rawQubiq.usedAether, completionPercent),
   };
 }
 
+// ============================================================
+// PUBLIC READS
+// ============================================================
 export async function getQubiq(
   plotId: bigint | number,
   x: number,
@@ -265,14 +332,19 @@ export async function getQubiq(
 ): Promise<QubiqReadState> {
   const provider = getProvider();
   const contract = getCityLandContract(provider);
+
   const [rawQubiq, costs] = await Promise.all([
-    contract.getQubiq(plotId, x, y) as Promise<RawQubiq>,
+    withRetry(() => contract.getQubiq(plotId, x, y) as Promise<RawQubiq>, "getQubiq"),
     readQubiqCosts(),
   ]);
 
   return mapRawQubiqToReadState(plotId, x, y, rawQubiq, costs);
 }
 
+/**
+ * Read all 25 Qubiq cells for a plot.
+ * Reads happen in parallel; individual cell failures don't break the whole map.
+ */
 export async function getAllPlotQubiqStates(
   plotId: bigint | number
 ): Promise<PlotQubiqMap> {
@@ -287,12 +359,9 @@ export async function getAllPlotQubiqStates(
 
       try {
         const rawQubiq = (await contract.getQubiq(plotId, x, y)) as RawQubiq;
-
-        return [
-          `${x},${y}`,
-          mapRawQubiqToReadState(plotId, x, y, rawQubiq, costs),
-        ] as const;
-      } catch {
+        return [`${x},${y}`, mapRawQubiqToReadState(plotId, x, y, rawQubiq, costs)] as const;
+      } catch (err) {
+        logDebug(`Cell ${x},${y} read failed`, err);
         return [`${x},${y}`, null] as const;
       }
     })
@@ -307,11 +376,15 @@ export async function getPlotCompletionState(
   const provider = getProvider();
   const contract = getCityLandContract(provider);
 
-  const [completionBpsRaw, isFullyCompleted, completedQubiqsRaw] = await Promise.all([
-    contract.getPlotCompletionBps(plotId) as Promise<bigint>,
-    contract.isPlotFullyCompleted(plotId) as Promise<boolean>,
-    contract.completedQubiqCountOf(plotId) as Promise<bigint>,
-  ]);
+  const [completionBpsRaw, isFullyCompleted, completedQubiqsRaw] = await withRetry(
+    () =>
+      Promise.all([
+        contract.getPlotCompletionBps(plotId) as Promise<bigint>,
+        contract.isPlotFullyCompleted(plotId) as Promise<boolean>,
+        contract.completedQubiqCountOf(plotId) as Promise<bigint>,
+      ]),
+    "getPlotCompletionState"
+  );
 
   const completionBps = Number(completionBpsRaw);
   const completedQubiqs = Number(completedQubiqsRaw);
@@ -344,6 +417,9 @@ export async function getCompletedQubiqCount(plotId: bigint | number): Promise<n
   return state.completedQubiqs;
 }
 
+// ============================================================
+// WRITE ACTIONS
+// ============================================================
 export async function contributeQubiq(args: {
   plotId: bigint | number;
   x: number;
@@ -352,6 +428,21 @@ export async function contributeQubiq(args: {
   lemonsAmount: bigint | number;
   ironAmount: bigint | number;
 }): Promise<ContractTransactionResponse> {
+  // Pre-flight: coordinate bounds
+  if (args.x < 0 || args.x > 4 || args.y < 0 || args.y > 4) {
+    throw new Error(`Invalid Qubiq coordinates: (${args.x}, ${args.y}). Must be 0-4 for both x and y.`);
+  }
+
+  // Pre-flight: amounts must be non-negative
+  const oil = BigInt(args.oilAmount);
+  const lemons = BigInt(args.lemonsAmount);
+  const iron = BigInt(args.ironAmount);
+  if (oil < 0n || lemons < 0n || iron < 0n) {
+    throw new Error("Qubiq contribution amounts cannot be negative.");
+  }
+
+  logDebug("Contribute Qubiq", { plotId: args.plotId.toString(), x: args.x, y: args.y, oil, lemons, iron });
+
   const provider = getProvider();
   const signer = await provider.getSigner();
   const contract = getCityLandContract(signer);
@@ -371,6 +462,12 @@ export async function useAetherOnQubiq(args: {
   x: number;
   y: number;
 }): Promise<ContractTransactionResponse> {
+  if (args.x < 0 || args.x > 4 || args.y < 0 || args.y > 4) {
+    throw new Error(`Invalid Qubiq coordinates: (${args.x}, ${args.y}). Must be 0-4.`);
+  }
+
+  logDebug("Use Aether on Qubiq", { plotId: args.plotId.toString(), x: args.x, y: args.y });
+
   const provider = getProvider();
   const signer = await provider.getSigner();
   const contract = getCityLandContract(signer);
@@ -380,4 +477,55 @@ export async function useAetherOnQubiq(args: {
     args.x,
     args.y
   ) as Promise<ContractTransactionResponse>;
+}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+/**
+ * Compute required resources for the NEXT contribution to a specific cell,
+ * accounting for what's already deposited. Useful for pre-flight checks.
+ */
+export async function getRemainingResourceRequirements(
+  plotId: bigint | number,
+  x: number,
+  y: number
+): Promise<{ oil: bigint; lemons: bigint; iron: bigint }> {
+  const state = await getQubiq(plotId, x, y);
+  return {
+    oil: state.oilRemaining,
+    lemons: state.lemonsRemaining,
+    iron: state.ironRemaining,
+  };
+}
+
+/**
+ * Whether a specific cell can still accept a contribution.
+ * Returns false if completed, aether-used, or coordinates are out of bounds.
+ */
+export async function canCellAcceptContribution(
+  plotId: bigint | number,
+  x: number,
+  y: number
+): Promise<boolean> {
+  if (x < 0 || x > 4 || y < 0 || y > 4) return false;
+  try {
+    const state = await getQubiq(plotId, x, y);
+    return !state.completed && !state.usedAether;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Return a human-readable label for a Qubiq state (for UI badges).
+ */
+export function getQubiqStateLabel(state: QubiqReadState | null): string {
+  if (!state) return "—";
+  switch (state.visualState) {
+    case "aether-complete": return "Aether Complete";
+    case "complete": return "Complete";
+    case "in-progress": return "In Progress";
+    default: return "Empty";
+  }
 }

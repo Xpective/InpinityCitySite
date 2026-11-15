@@ -111,6 +111,85 @@ export const CITY_DASHBOARD_QUERY = gql(`
 `);
 
 // ============================================================
+// CITY ACTIVITY (für CityTicker)
+// ============================================================
+
+export const CITY_ACTIVITY_QUERY = gql(`
+  query CityActivity($first: Int = 20) {
+    qubiqContributions(
+      first: $first
+      orderBy: timestamp
+      orderDirection: desc
+    ) {
+      id
+      plot {
+        id
+        plotId
+      }
+      x
+      y
+      contributor
+      oil
+      lemons
+      iron
+      blockNumber
+      timestamp
+      txHash
+    }
+
+    plotCompletions(
+      first: $first
+      orderBy: timestamp
+      orderDirection: desc
+    ) {
+      id
+      plot {
+        id
+        plotId
+      }
+      blockNumber
+      timestamp
+      txHash
+    }
+
+    transferEvents(
+      first: $first
+      orderBy: timestamp
+      orderDirection: desc
+    ) {
+      id
+      from
+      to
+      tokenId
+      blockNumber
+      timestamp
+      txHash
+    }
+  }
+`);
+
+// ============================================================
+// HEALTH CHECK
+// ============================================================
+
+export const HEALTH_CHECK_QUERY = gql(`
+  query HealthCheck {
+    _meta {
+      block {
+        number
+        timestamp
+      }
+    }
+    plots(first: 1) {
+      id
+    }
+    players(first: 1) {
+      id
+    }
+  }
+`);
+
+// ============================================================
 // PAGINATED QUERIES
 // ============================================================
 
